@@ -1,4 +1,4 @@
-from arcana.core.cli import ext
+from arcana.core.cli.base import ext
 
 
 @ext.group(name="xnat")
