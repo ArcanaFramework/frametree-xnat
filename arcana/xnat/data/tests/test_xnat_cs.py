@@ -60,7 +60,10 @@ def run_spec(
                 "name": mock_bids_app_image,
                 "package_manager": "apt",
             },
-            "packages": {"system": ["git", "vim"]},
+            "packages": {
+                "system": ["git", "vim"],
+                "pip": ["arcana-bids"],
+            },
             "command": bids_command_spec,
             "authors": [
                 {"name": "Some One Else", "email": "some.oneelse@an.email.org"}
