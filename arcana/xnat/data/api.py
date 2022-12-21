@@ -22,14 +22,14 @@ from arcana.core.utils.misc import (
 )
 from arcana.core.data.store import DataStore
 from arcana.core.data.row import DataRow
-from arcana.exceptions import (
+from arcana.core.exceptions import (
     ArcanaError,
     ArcanaUsageError,
     ArcanaWrongRepositoryError,
 )
 from arcana.core.utils.serialize import parse_value, asdict
 from arcana.core.data.set import Dataset
-from arcana.data.spaces.medimage import Clinical
+from arcana.medimage.data import Clinical
 
 
 logger = logging.getLogger("arcana")
@@ -676,7 +676,7 @@ class Xnat(DataStore):
         """Get the URI of the XNAT row (ImageSession | Subject | Project)
         using labels rather than IDs for subject and sessions, e.g
 
-        >>> from arcana.data.stores.medimage import Xnat
+        >>> from arcana.medimage.data import Xnat
         >>> store = Xnat.load('my-xnat')
         >>> xsession = store.login.experiments['MRH017_100_MR01']
         >>> store.standard_uri(xsession)

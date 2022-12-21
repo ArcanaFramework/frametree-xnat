@@ -9,10 +9,10 @@ import typing as ty
 from pathlib import Path
 import shutil
 import attrs
-from arcana.data.spaces.medimage import Clinical
+from arcana.medimage.data import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.type.base import FileGroup
-from arcana.exceptions import ArcanaNoDirectXnatMountException
+from arcana.core.exceptions import ArcanaNoDirectXnatMountException
 from .api import Xnat
 
 logger = logging.getLogger("arcana")

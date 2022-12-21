@@ -7,11 +7,11 @@ from tempfile import mkdtemp
 from itertools import product
 import xnat
 import xnat4tests
-from arcana.data.xnat.api import Xnat
-from arcana.data.xnat.cs import XnatViaCS
-from arcana.data.medimage import Clinical
+from arcana.xnat.data.api import Xnat
+from arcana.xnat.data.cs import XnatViaCS
+from arcana.medimage.data import Clinical
 from arcana.core.utils.testing.data import create_test_file
-from arcana.exceptions import ArcanaError
+from arcana.core.exceptions import ArcanaError
 
 
 @dataclass

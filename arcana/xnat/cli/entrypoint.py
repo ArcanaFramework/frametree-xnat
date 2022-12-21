@@ -1,6 +1,6 @@
 import click
 from arcana.core.deploy.command import entrypoint_opts
-from arcana.deploy.xnat import XnatCSImage
+from arcana.xnat.deploy import XnatApp
 from .base import xnat_group
 
 
@@ -28,7 +28,7 @@ def cs_entrypoint(
     **kwargs,
 ):
 
-    image_spec = XnatCSImage.load(spec_path)
+    image_spec = XnatApp.load(spec_path)
 
     image_spec.command.execute(
         dataset_locator,

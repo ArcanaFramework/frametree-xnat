@@ -26,11 +26,11 @@ def test_store_cli(xnat_repository, cli_runner, work_dir):
         # List all saved and built-in stores
         result = cli_runner(ls, [])
         assert result.exit_code == 0, show_cli_trace(result)
-        assert "bids - arcana.data.stores.bids.structure:Bids" in result.output
+        assert "bids - arcana.bids.data.structure:Bids" in result.output
         assert (
-            "file - arcana.data.stores.common.file_system:FileSystem" in result.output
+            "file - arcana.common.data.file_system:FileSystem" in result.output
         )
-        assert "test-xnat - arcana.data.stores.xnat.api:Xnat" in result.output
+        assert "test-xnat - arcana.xnat.data.api:Xnat" in result.output
         assert "    server: " + xnat_repository.server in result.output
 
 
@@ -83,13 +83,13 @@ def test_store_cli_rename(xnat_repository, cli_runner, work_dir):
         )
         # Check store is saved
         result = cli_runner(ls, [])
-        assert "i123 - arcana.data.stores.xnat.api:Xnat" in result.output
+        assert "i123 - arcana.xnat.data.api:Xnat" in result.output
 
         cli_runner(rename, [old_store_name, new_store_name])
         # Check store is renamed
         result = cli_runner(ls, [])
-        assert "i123 - arcana.data.stores.xnat.api:Xnat" not in result.output
-        assert "y456 - arcana.data.stores.xnat.api:Xnat" in result.output
+        assert "i123 - arcana.xnat.data.api:Xnat" not in result.output
+        assert "y456 - arcana.xnat.data.api:Xnat" in result.output
 
 
 def test_store_cli_encrypt_credentials(xnat_repository, cli_runner, work_dir):

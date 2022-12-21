@@ -1,17 +1,17 @@
 import pytest
-from arcana.core.utils.testing.fixtures.xnat import (
+from conftest import (
     make_mutable_dataset,
     TEST_XNAT_DATASET_BLUEPRINTS,
     TestXnatDatasetBlueprint,
     ResourceBlueprint,
     ScanBlueprint,
 )
-from arcana.deploy.xnat.image import XnatCSImage
-from arcana.deploy.xnat.command import XnatCSCommand
-from arcana.core.utils.testing.data.stores.xnat import (
+from arcana.xnat.deploy.image import XnatApp
+from arcana.xnat.deploy.command import XnatCommand
+from arcana.xnat.utils.testing import (
     install_and_launch_xnat_cs_command,
 )
-from arcana.data.types.medimage import NiftiGzX, NiftiGzXFslgrad
+from arcana.medimage.data import NiftiGzX, NiftiGzXFslgrad
 
 
 PIPELINE_NAME = "test-concatenate"
@@ -134,7 +134,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     # Append run_prefix to command name to avoid clash with previous test runs
     build_spec["name"] = "xnat-cs-test" + run_prefix
 
-    image_spec = XnatCSImage(**build_spec)
+    image_spec = XnatApp(**build_spec)
 
     image_spec.make(
         build_dir=work_dir,
@@ -153,7 +153,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     launch_inputs = {}
 
     for inpt, scan in zip(xnat_command["inputs"], blueprint.scans):
-        launch_inputs[XnatCSCommand.path2xnatname(inpt["name"])] = scan.name
+        launch_inputs[XnatCommand.path2xnatname(inpt["name"])] = scan.name
 
     for pname, pval in params.items():
         launch_inputs[pname] = pval
