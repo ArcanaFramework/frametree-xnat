@@ -26,10 +26,6 @@ def test_store_cli(xnat_repository, cli_runner, work_dir):
         # List all saved and built-in stores
         result = cli_runner(ls, [])
         assert result.exit_code == 0, show_cli_trace(result)
-        assert "bids - arcana.bids.data.structure:Bids" in result.output
-        assert (
-            "file - arcana.common.data.file_system:FileSystem" in result.output
-        )
         assert "test-xnat - arcana.xnat.data.api:Xnat" in result.output
         assert "    server: " + xnat_repository.server in result.output
 
