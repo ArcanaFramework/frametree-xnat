@@ -9,9 +9,9 @@ import typing as ty
 from pathlib import Path
 import shutil
 import attrs
-from arcana.medimage.data import Clinical
+from arcana.core.data import Clinical
 from arcana.core.data.space import DataSpace
-from arcana.core.data.type.base import FileGroup
+from fileformats.core.base import FileGroup
 from arcana.core.exceptions import ArcanaNoDirectXnatMountException
 from .api import Xnat
 

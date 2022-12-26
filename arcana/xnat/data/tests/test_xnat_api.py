@@ -8,9 +8,8 @@ from pathlib import Path
 import hashlib
 from tempfile import mkdtemp
 from functools import reduce
-from arcana.medimage.data import Clinical
+from arcana.core.data.space import Clinical
 from arcana.core.data.set import Dataset
-from arcana.core.utils.testing.data import create_test_file
 
 if sys.platform == "win32":
 
@@ -92,13 +91,13 @@ def test_get_items(xnat_dataset, caplog):
     assert f"{method_str} access" in caplog.text.lower()
 
 
-def test_put_items(mutable_xnat_dataset: Dataset, caplog):
-    blueprint = mutable_xnat_dataset.__annotations__["blueprint"]
-    access_method = mutable_xnat_dataset.__annotations__["access_method"]
+def test_put_items(mutable_dataset: Dataset, caplog):
+    blueprint = mutable_dataset.__annotations__["blueprint"]
+    access_method = mutable_dataset.__annotations__["access_method"]
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
     for deriv in blueprint.derivatives:
-        mutable_xnat_dataset.add_sink(
+        mutable_dataset.add_sink(
             name=deriv.name, datatype=deriv.datatype, row_frequency=deriv.row_frequency
         )
         deriv_tmp_dir = tmp_dir / deriv.name
@@ -118,7 +117,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
         # Insert into first row of that row_frequency in xnat_dataset
-        row = next(iter(mutable_xnat_dataset.rows(deriv.row_frequency)))
+        row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
         item = row[deriv.name]
         with caplog.at_level(logging.INFO, logger="arcana"):
             item.put(*fs_paths)
@@ -127,7 +126,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
 
     def check_inserted():
         for deriv in blueprint.derivatives:
-            row = next(iter(mutable_xnat_dataset.rows(deriv.row_frequency)))
+            row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
             item = row[deriv.name]
             item.get_checksums(force_calculate=(access_method == "cs"))
             assert isinstance(item, deriv.datatype)
@@ -138,7 +137,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     if access_method == "api":
         check_inserted()
         # Check read from cached files
-        mutable_xnat_dataset.refresh()
+        mutable_dataset.refresh()
         # Note that we can't check the direct access put by this method since
         # it isn't registered with the XNAT database and therefore isn't
         # found by `find_items`. In real life this is handled by the output
@@ -146,7 +145,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
         check_inserted()
         # Check downloaded by deleting the cache dir
         shutil.rmtree(
-            mutable_xnat_dataset.store.cache_dir / "projects" / mutable_xnat_dataset.id
+            mutable_dataset.store.cache_dir / "projects" / mutable_dataset.id
         )
-        mutable_xnat_dataset.refresh()
+        mutable_dataset.refresh()
         check_inserted()

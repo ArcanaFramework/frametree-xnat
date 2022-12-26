@@ -8,6 +8,7 @@ import time
 import tempfile
 import logging
 import errno
+from itertools import product
 import json
 import re
 from zipfile import ZipFile, BadZipfile
@@ -20,7 +21,10 @@ from arcana.core.utils.misc import (
     path2varname,
     varname2path,
 )
-from arcana.core.data.store import DataStore
+from arcana.core.data.store import (
+    DataStore,
+    TestDatasetBlueprint,
+)
 from arcana.core.data.row import DataRow
 from arcana.core.exceptions import (
     ArcanaError,
@@ -29,7 +33,8 @@ from arcana.core.exceptions import (
 )
 from arcana.core.utils.serialize import parse_value, asdict
 from arcana.core.data.set import Dataset
-from arcana.medimage.data import Clinical
+from arcana.core.data.space import DataSpace
+from arcana.core.data import Clinical
 
 
 logger = logging.getLogger("arcana")
@@ -40,6 +45,31 @@ tag_parse_re = re.compile(r"\((\d+),(\d+)\)")
 RELEVANT_DICOM_TAG_TYPES = set(("UI", "CS", "DA", "TM", "SH", "LO", "PN", "ST", "AS"))
 
 # COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}
+
+
+@attrs.define
+class ResourceBlueprint:
+
+    name: str
+    datatype: type
+    filenames: ty.List[str]
+
+
+@attrs.define
+class ScanBlueprint:
+
+    name: str
+    resources: ty.List[ResourceBlueprint]
+
+
+@attrs.define(slots=False, kw_only=True)
+class TestXnatDatasetBlueprint(TestDatasetBlueprint):
+
+    scans: ty.List[ScanBlueprint]
+
+    # Overwrite attributes in core blueprint class
+    hierarchy: list[DataSpace] = [Clinical.subject, Clinical.session]
+    files: list[str] = None
 
 
 @attrs.define
@@ -763,6 +793,59 @@ class Xnat(DataStore):
     SITE_LICENSES_DATASET_ENV = "ARCANA_SITE_LICENSE_DATASET"
     SITE_LICENSES_USER_ENV = "ARCANA_SITE_LICENSE_USER"
     SITE_LICENSES_PASS_ENV = "ARCANA_SITE_LICENSE_PASS"
+
+    def create_test_dataset_data(
+        self,
+        blueprint: TestDatasetBlueprint,
+        dataset_id: str,
+        source_data: Path = None
+    ):
+        """
+        Creates dataset for each entry in dataset_structures
+        """
+
+        with self:
+            self.login.put(f"/data/archive/projects/{dataset_id}")
+
+        with self:
+            xproject = self.login.projects[dataset_id]
+            xclasses = self.login.classes
+            for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
+                ids = dict(zip(Clinical.axes(), id_tple))
+                # Create subject
+                subject_label = "".join(f"{b}{ids[b]}" for b in Clinical.subject.span())
+                xsubject = xclasses.SubjectData(label=subject_label, parent=xproject)
+                # Create session
+                session_label = "".join(f"{b}{ids[b]}" for b in Clinical.session.span())
+                xsession = xclasses.MrSessionData(label=session_label, parent=xsubject)
+
+                for i, scan in enumerate(blueprint.scans, start=1):
+                    # Create scan
+                    self.create_test_data_item(
+                        scan_id=i,
+                        blueprint=scan,
+                        parent=xsession,
+                        source_data=source_data,
+                    )
+
+    def create_test_data_item(
+        self, scan_id: int, blueprint: ScanBlueprint, parent, source_data: Path = None
+    ):
+        xclasses = parent.xnat_session.classes
+        xscan = xclasses.MrScanData(id=scan_id, type=blueprint.name, parent=parent)
+        for resource in blueprint.resources:
+            tmp_dir = Path(tempfile.mkdtemp())
+            # Create the resource
+            xresource = xscan.create_resource(resource.name)
+            # Create the dummy files
+            for fname in resource.filenames:
+                if source_data is not None:
+                    fpath = source_data.joinpath(*fname.split("/"))
+                    target_fpath = fpath.name
+                else:
+                    fpath = super().create_test_data_item(fname, tmp_dir)
+                    target_fpath = str(fpath)
+                xresource.upload(str(tmp_dir / fpath), target_fpath)
 
 
 def append_suffix(path, suffix):

@@ -1,17 +1,17 @@
 import pytest
 from conftest import (
-    make_mutable_dataset,
     TEST_XNAT_DATASET_BLUEPRINTS,
     TestXnatDatasetBlueprint,
     ResourceBlueprint,
     ScanBlueprint,
+    get_test_repo,
 )
 from arcana.xnat.deploy.image import XnatApp
 from arcana.xnat.deploy.command import XnatCommand
 from arcana.xnat.utils.testing import (
     install_and_launch_xnat_cs_command,
 )
-from arcana.medimage.data import NiftiGzX, NiftiGzXFslgrad
+from fileformats.medimage import NiftiGzX, NiftiGzXFslgrad
 
 
 PIPELINE_NAME = "test-concatenate"
@@ -21,11 +21,13 @@ PIPELINE_NAME = "test-concatenate"
 def run_spec(
     command_spec,
     bids_command_spec,
+    concatenate_dataset,
     xnat_repository,
     xnat_archive_dir,
     request,
     nifti_sample_dir,
     mock_bids_app_image,
+    run_prefix,
 ):
     spec = {}
     if request.param == "func":
@@ -41,12 +43,15 @@ def run_spec(
             "registry": "a.docker.registry.io",
             "packages": {"system": ["git", "vim"]},
         }
-        spec["dataset"] = make_mutable_dataset(
-            dataset_id="xnat_cs_func",
-            blueprint=TEST_XNAT_DATASET_BLUEPRINTS["concatenate_test"],
-            xnat_repository=xnat_repository,
-            xnat_archive_dir=xnat_archive_dir,
-            access_method="cs",
+        blueprint = TEST_XNAT_DATASET_BLUEPRINTS["concatenate_test"]
+        project_id = (
+            run_prefix
+            + "concatenate_test"
+        )
+        store = get_test_repo(project_id, "cs", xnat_repository, xnat_archive_dir)
+        spec["dataset"] = store.make_test_dataset(
+            blueprint=blueprint,
+            dataset_id=project_id,
         )
         spec["params"] = {"duplicates": 2}
     elif request.param == "bids_app":
@@ -107,15 +112,15 @@ def run_spec(
                     ],
                 ),
             ],
-            {},
-            [],
         )
-        spec["dataset"] = make_mutable_dataset(
-            dataset_id="xnat_cs_bids_app",
+        project_id = (
+            run_prefix
+            + "xnat_cs_bids_app"
+        )
+        store = get_test_repo(project_id, "cs", xnat_repository, xnat_archive_dir)
+        spec["dataset"] = store.make_test_dataset(
             blueprint=blueprint,
-            xnat_repository=xnat_repository,
-            xnat_archive_dir=xnat_archive_dir,
-            access_method="cs",
+            dataset_id=project_id,
             source_data=nifti_sample_dir,
         )
         spec["params"] = {}
