@@ -1,17 +1,7 @@
 import typing as ty
 import time
-from pathlib import Path
-import random
-from dataclasses import dataclass
-from tempfile import mkdtemp
-from itertools import product
 import xnat
-import xnat4tests
-from arcana.xnat.data.api import Xnat
-from arcana.xnat.data.cs import XnatViaCS
-from arcana.core.data import Clinical
 from arcana.core.exceptions import ArcanaError
-
 
 
 # List of intermediatary states can pass through
@@ -24,6 +14,7 @@ INCOMPLETE_CS_STATES = (
     "Finalizing",
     "Created",
     "_die",
+    "die",
 )
 
 
