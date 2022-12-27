@@ -40,7 +40,10 @@ def run_spec(
             "info_url": "http://concatenate.readthefakedocs.io",
             "readme": "This is a test README",
             "registry": "a.docker.registry.io",
-            "packages": {"system": ["git", "vim"]},
+            "packages": {
+                "system": ["git", "vim"],
+                "pip": ["arcana-xnat"],
+            },
         }
         blueprint = TEST_XNAT_DATASET_BLUEPRINTS["concatenate_test"]
         project_id = (
@@ -66,7 +69,7 @@ def run_spec(
             },
             "packages": {
                 "system": ["git", "vim"],
-                "pip": ["arcana-bids"],
+                "pip": ["arcana-xnat", "arcana-bids"],
             },
             "command": bids_command_spec,
             "authors": [
