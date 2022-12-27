@@ -22,7 +22,7 @@ def test_add_source_xnat(mutable_dataset, cli_runner, work_dir):
             [
                 dataset_locator,
                 "a_source",
-                "common:Text",
+                "fileformats.common:Text",
                 "--path",
                 "file1",
                 "--row-frequency",
@@ -55,7 +55,7 @@ def test_add_sink_xnat(mutable_dataset, work_dir, cli_runner):
             [
                 dataset_locator,
                 "a_sink",
-                "common:Text",
+                "fileformats.common:Text",
                 "--path",
                 "deriv",
                 "--row-frequency",

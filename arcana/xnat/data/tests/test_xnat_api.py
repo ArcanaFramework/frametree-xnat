@@ -8,8 +8,10 @@ from pathlib import Path
 import hashlib
 from tempfile import mkdtemp
 from functools import reduce
+from arcana.core.data.store import DataStore
 from arcana.core.data.space import Clinical
 from arcana.core.data.set import Dataset
+from arcana.xnat.data import XnatViaCS
 
 if sys.platform == "win32":
 
@@ -51,7 +53,6 @@ def test_find_rows(xnat_dataset):
 
 def test_get_items(xnat_dataset, caplog):
     blueprint = xnat_dataset.__annotations__["blueprint"]
-    access_method = xnat_dataset.__annotations__["access_method"]
     expected_files = {}
     for scan in blueprint.scans:
         for resource in scan.resources:
@@ -87,13 +88,12 @@ def test_get_items(xnat_dataset, caplog):
                 else:
                     item_files = set(p.name for p in item.fs_paths)
                 assert item_files == files
-    method_str = "direct" if access_method == "cs" else "api"
+    method_str = "direct" if type(xnat_dataset.store) is XnatViaCS else "api"
     assert f"{method_str} access" in caplog.text.lower()
 
 
 def test_put_items(mutable_dataset: Dataset, caplog):
     blueprint = mutable_dataset.__annotations__["blueprint"]
-    access_method = mutable_dataset.__annotations__["access_method"]
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
     for deriv in blueprint.derivatives:
@@ -106,7 +106,7 @@ def test_put_items(mutable_dataset: Dataset, caplog):
         all_checksums[deriv.name] = checksums = {}
         fs_paths = []
         for fname in deriv.filenames:
-            test_file = create_test_file(fname, deriv_tmp_dir)
+            test_file = DataStore.create_test_data_item(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
             with open(deriv_tmp_dir / test_file, "rb") as f:
                 fhash.update(f.read())
@@ -121,8 +121,10 @@ def test_put_items(mutable_dataset: Dataset, caplog):
         item = row[deriv.name]
         with caplog.at_level(logging.INFO, logger="arcana"):
             item.put(*fs_paths)
-        method_str = "direct" if access_method == "cs" else "api"
+        method_str = "direct" if type(mutable_dataset.store) is XnatViaCS else "api"
         assert f"{method_str} access" in caplog.text.lower()
+
+    access_method = "cs" if type(mutable_dataset.store) is XnatViaCS else "api"
 
     def check_inserted():
         for deriv in blueprint.derivatives:

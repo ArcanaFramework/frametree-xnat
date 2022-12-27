@@ -100,6 +100,7 @@ class Xnat(DataStore):
 
     server: str = attrs.field()
     cache_dir: str = attrs.field(converter=Path)
+    name: str = None
     user: str = attrs.field(default=None, metadata={"asdict": False})
     password: str = attrs.field(default=None, metadata={"asdict": False})
     check_md5: bool = attrs.field(default=True)
@@ -706,7 +707,7 @@ class Xnat(DataStore):
         """Get the URI of the XNAT row (ImageSession | Subject | Project)
         using labels rather than IDs for subject and sessions, e.g
 
-        >>> from arcana.medimage.data import Xnat
+        >>> from arcana.xnat.data import Xnat
         >>> store = Xnat.load('my-xnat')
         >>> xsession = store.login.experiments['MRH017_100_MR01']
         >>> store.standard_uri(xsession)

@@ -21,7 +21,6 @@ PIPELINE_NAME = "test-concatenate"
 def run_spec(
     command_spec,
     bids_command_spec,
-    concatenate_dataset,
     xnat_repository,
     xnat_archive_dir,
     request,
@@ -78,8 +77,8 @@ def run_spec(
             "registry": "another.docker.registry.io",
         }
         blueprint = TestXnatDatasetBlueprint(
-            [1, 1, 1],
-            [
+            dim_lengths=[1, 1, 1],
+            scans=[
                 ScanBlueprint(
                     "anat/T1w",
                     [
