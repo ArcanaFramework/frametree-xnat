@@ -84,9 +84,9 @@ def test_get_items(xnat_dataset, caplog):
                     )
                     raise PermissionError(msg)
                 if item.is_dir:
-                    item_files = set(os.listdir(item.fs_path))
+                    item_files = set(os.listdir(item.fspath))
                 else:
-                    item_files = set(p.name for p in item.fs_paths)
+                    item_files = set(p.name for p in item.fspaths)
                 assert item_files == files
     method_str = "direct" if type(xnat_dataset.store) is XnatViaCS else "api"
     assert f"{method_str} access" in caplog.text.lower()
@@ -104,7 +104,7 @@ def test_put_items(mutable_dataset: Dataset, caplog):
         # Create test files, calculate checksums and recorded expected paths
         # for inserted files
         all_checksums[deriv.name] = checksums = {}
-        fs_paths = []
+        fspaths = []
         for fname in deriv.filenames:
             test_file = DataStore.create_test_data_item(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
@@ -115,12 +115,12 @@ def test_put_items(mutable_dataset: Dataset, caplog):
             except ValueError:
                 rel_path = ".".join(test_file.suffixes)[1:]
             checksums[rel_path] = fhash.hexdigest()
-            fs_paths.append(deriv_tmp_dir / test_file.parts[0])
+            fspaths.append(deriv_tmp_dir / test_file.parts[0])
         # Insert into first row of that row_frequency in xnat_dataset
         row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
         item = row[deriv.name]
         with caplog.at_level(logging.INFO, logger="arcana"):
-            item.put(*fs_paths)
+            item.put(*fspaths)
         method_str = "direct" if type(mutable_dataset.store) is XnatViaCS else "api"
         assert f"{method_str} access" in caplog.text.lower()
 
@@ -134,7 +134,7 @@ def test_put_items(mutable_dataset: Dataset, caplog):
             assert isinstance(item, deriv.datatype)
             assert item.checksums == all_checksums[deriv.name]
             item.get()
-            assert all(p.exists() for p in item.fs_paths)
+            assert all(p.exists() for p in item.fspaths)
 
     if access_method == "api":
         check_inserted()

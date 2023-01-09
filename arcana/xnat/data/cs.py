@@ -110,9 +110,9 @@ class XnatViaCS(Xnat):
                 for item in resource_path.iterdir():
                     if not item.name.endswith("_catalog.xml"):
                         os.symlink(item, dir_path / item.name)
-                fs_paths = [dir_path]
+                fspaths = [dir_path]
             else:
-                fs_paths = list(resource_path.iterdir())
+                fspaths = list(resource_path.iterdir())
         else:
             logger.debug(
                 "No URI set for fileset %s, assuming it is a newly created "
@@ -121,25 +121,25 @@ class XnatViaCS(Xnat):
             )
             stem_path = self.fileset_stem_path(fileset)
             if fileset.is_dir:
-                fs_paths = [stem_path]
+                fspaths = [stem_path]
             else:
-                fs_paths = list(stem_path.iterdir())
-        return fs_paths
+                fspaths = list(stem_path.iterdir())
+        return fspaths
 
     def put_fileset_paths(
-        self, fileset: FileSet, fs_paths: ty.List[Path]
+        self, fileset: FileSet, fspaths: ty.List[Path]
     ) -> ty.List[Path]:
         stem_path = self.fileset_stem_path(fileset)
         os.makedirs(stem_path.parent, exist_ok=True)
         cache_paths = []
-        for fs_path in fs_paths:
+        for fspath in fspaths:
             if fileset.is_dir:
                 target_path = stem_path
-                shutil.copytree(fs_path, target_path)
+                shutil.copytree(fspath, target_path)
             else:
-                target_path = fileset.copy_ext(fs_path, stem_path)
+                target_path = fileset.copy_ext(fspath, stem_path)
                 # Upload primary file and add to cache
-                shutil.copyfile(fs_path, target_path)
+                shutil.copyfile(fspath, target_path)
             cache_paths.append(target_path)
         # Update file-set with new values for local paths and XNAT URI
         fileset.uri = (

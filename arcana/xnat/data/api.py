@@ -336,7 +336,7 @@ class Xnat(DataStore):
             cache_paths = list(cache_path.iterdir())
         return cache_paths
 
-    def put_fileset_paths(self, fileset, fs_paths):
+    def put_fileset_paths(self, fileset, fspaths):
         """
         Stores files for a file set into the XNAT repository
 
@@ -344,7 +344,7 @@ class Xnat(DataStore):
         ----------
         fileset : FileSet
             The file-set to put the paths for
-        fs_paths: list[Path or str  ]
+        fspaths: list[Path or str  ]
             The paths of files/directories to put into the XNAT repository
 
         Returns
@@ -383,30 +383,30 @@ class Xnat(DataStore):
                 shutil.rmtree(base_cache_path)
             # Upload data and add it to cache
             cache_paths = []
-            for fs_path in fs_paths:
-                if fs_path.is_dir():
+            for fspath in fspaths:
+                if fspath.is_dir():
                     # Upload directory to XNAT and add to cache
-                    for dpath, _, fnames in os.walk(fs_path):
+                    for dpath, _, fnames in os.walk(fspath):
                         dpath = Path(dpath)
                         for fname in fnames:
                             fpath = dpath / fname
-                            frelpath = fpath.relative_to(fs_path)
+                            frelpath = fpath.relative_to(fspath)
                             xresource.upload(str(fpath), str(frelpath))
-                    shutil.copytree(fs_path, base_cache_path)
+                    shutil.copytree(fspath, base_cache_path)
                     cache_path = base_cache_path
                 else:
                     # Upload file path to XNAT and add to cache
-                    fname = fileset.copy_ext(fs_path, escaped_name)
-                    xresource.upload(str(fs_path), str(fname))
+                    fname = fileset.copy_ext(fspath, escaped_name)
+                    xresource.upload(str(fspath), str(fname))
                     base_cache_path.mkdir(
                         exist_ok=True, parents=True, mode=stat.S_IRWXU | stat.S_IRWXG
                     )
                     cache_path = base_cache_path / fname
-                    shutil.copyfile(fs_path, cache_path)
+                    shutil.copyfile(fspath, cache_path)
                 cache_paths.append(cache_path)
             # need to manually set this here in order to calculate the
             # checksums (instead of waiting until after the 'put' is finished)
-            fileset.set_fs_paths(cache_paths)
+            fileset.set_fspaths(cache_paths)
             with open(
                 append_suffix(base_cache_path, self.MD5_SUFFIX), "w", **JSON_ENCODING
             ) as f:
