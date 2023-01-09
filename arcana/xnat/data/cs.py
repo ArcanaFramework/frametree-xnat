@@ -141,7 +141,7 @@ class XnatViaCS(Xnat):
                 # Upload primary file and add to cache
                 shutil.copyfile(fs_path, target_path)
             cache_paths.append(target_path)
-        # Update file-group with new values for local paths and XNAT URI
+        # Update file-set with new values for local paths and XNAT URI
         fileset.uri = (
             self._make_uri(fileset.row) + "/RESOURCES/" + fileset.path
         )

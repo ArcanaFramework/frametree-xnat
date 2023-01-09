@@ -343,7 +343,7 @@ class Xnat(DataStore):
         Parameters
         ----------
         fileset : FileSet
-            The file-group to put the paths for
+            The file-set to put the paths for
         fs_paths: list[Path or str  ]
             The paths of files/directories to put into the XNAT repository
 
