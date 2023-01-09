@@ -338,7 +338,7 @@ class Xnat(DataStore):
 
     def put_fileset_paths(self, fileset, fs_paths):
         """
-        Stores files for a file group into the XNAT repository
+        Stores files for a file set into the XNAT repository
 
         Parameters
         ----------
