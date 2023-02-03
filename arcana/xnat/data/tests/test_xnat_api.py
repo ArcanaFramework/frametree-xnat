@@ -142,7 +142,7 @@ def test_put_items(mutable_dataset: Dataset, caplog):
         mutable_dataset.refresh()
         # Note that we can't check the direct access put by this method since
         # it isn't registered with the XNAT database and therefore isn't
-        # found by `find_items`. In real life this is handled by the output
+        # found by `find_cells`. In real life this is handled by the output
         # handlers of the container service
         check_inserted()
         # Check downloaded by deleting the cache dir

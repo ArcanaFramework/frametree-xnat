@@ -5,13 +5,15 @@ containers
 import os
 import re
 import logging
-import typing as ty
 from pathlib import Path
 import shutil
 import attrs
+from fileformats.core.base import FileSet
+from fileformats.medimage import Dicom
 from arcana.core.data import Clinical
 from arcana.core.data.space import DataSpace
-from fileformats.core.base import FileSet
+from arcana.core.data.row import DataRow
+from arcana.core.data.entry import DataEntry
 from arcana.core.exceptions import ArcanaNoDirectXnatMountException
 from .api import Xnat
 
@@ -76,32 +78,34 @@ class XnatViaCS(Xnat):
     def password_default(self):
         return os.environ["XNAT_PASS"]
 
-    def get_fileset_paths(self, fileset: FileSet) -> ty.List[Path]:
+    def get_fileset(self, entry: DataEntry) -> FileSet:
+        """Attempt to get fileset directly from the input mount, falling back to API
+        access if that fails"""
         try:
-            input_mount = self.get_input_mount(fileset)
+            input_mount = self.get_input_mount(entry)
         except ArcanaNoDirectXnatMountException:
             # Fallback to API access
-            return super().get_fileset_paths(fileset)
+            return super().get_fileset(entry)
         logger.info(
             "Getting %s from %s:%s row via direct access to archive directory",
-            fileset.path,
-            fileset.row.frequency,
-            fileset.row.id,
+            entry.id,
+            entry.row.frequency,
+            entry.row.id,
         )
-        if fileset.uri:
+        if entry.uri:
             path = re.match(
                 r"/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/"
                 r"(?:subjects/[a-zA-Z0-9\-_]+/)?"
                 r"(?:experiments/[a-zA-Z0-9\-_]+/)?(?P<path>.*)$",
-                fileset.uri,
+                entry.uri,
             ).group("path")
             if "scans" in path:
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-            if fileset.is_dir:
+            if entry.datatype.is_dir:
                 # Link files from resource dir into temp dir to avoid catalog XML
-                dir_path = self.cache_path(fileset)
+                dir_path = self.cache_path(entry)
                 try:
                     shutil.rmtree(dir_path)
                 except FileNotFoundError:
@@ -115,50 +119,52 @@ class XnatViaCS(Xnat):
                 fspaths = list(resource_path.iterdir())
         else:
             logger.debug(
-                "No URI set for fileset %s, assuming it is a newly created "
+                "No URI set for fileset entry %s, assuming it is a newly created "
                 "derivative on the output mount",
-                fileset,
+                entry,
             )
-            stem_path = self.fileset_stem_path(fileset)
-            if fileset.is_dir:
+            stem_path = self.entry_path(entry)
+            if entry.datatype is Dicom:
                 fspaths = [stem_path]
             else:
                 fspaths = list(stem_path.iterdir())
         return fspaths
 
-    def put_fileset_paths(
-        self, fileset: FileSet, fspaths: ty.List[Path]
-    ) -> ty.List[Path]:
-        stem_path = self.fileset_stem_path(fileset)
-        os.makedirs(stem_path.parent, exist_ok=True)
-        cache_paths = []
-        for fspath in fspaths:
-            if fileset.is_dir:
-                target_path = stem_path
-                shutil.copytree(fspath, target_path)
-            else:
-                target_path = fileset.copy_ext(fspath, stem_path)
-                # Upload primary file and add to cache
-                shutil.copyfile(fspath, target_path)
-            cache_paths.append(target_path)
-        # Update file-set with new values for local paths and XNAT URI
-        fileset.uri = (
-            self._make_uri(fileset.row) + "/RESOURCES/" + fileset.path
-        )
+    def put_fileset(
+        self, fileset: FileSet, entry: DataEntry
+    ) -> FileSet:
+        entry_path = self.entry_path(entry)
+        dest_dir = entry_path.parent
+        stem = entry_path.name
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir)
+        cached = fileset.copy_to(dest_dir, stem=stem)
         logger.info(
             "Put %s into %s:%s row via direct access to archive directory",
-            fileset.path,
-            fileset.row.frequency,
-            fileset.row.id,
+            entry.id,
+            entry.row.frequency,
+            entry.row.id,
         )
-        return cache_paths
+        return cached
 
-    def fileset_stem_path(self, fileset):
+    def post_fileset(self, fileset, id: str, datatype: type, row: DataRow) -> DataEntry:
+        uri = (
+            self._make_uri(fileset.row) + "/RESOURCES/" + fileset.path
+        )
+        entry = row.add_entry(
+            id=id,
+            datatype=datatype,
+            uri=uri
+        )
+        self.put_fileset(fileset, entry)
+        return entry
+
+    def entry_path(self, entry: DataEntry) -> Path:
         """Determine the paths that derivatives will be saved at"""
-        return self.output_mount.joinpath(*fileset.path.split("/"))
+        return self.output_mount.joinpath(*entry.id.split("/"))
 
-    def get_input_mount(self, fileset):
-        row = fileset.row
+    def get_input_mount(self, entry: DataEntry) -> Path:
+        row = entry.row
         if self.row_frequency == row.frequency:
             return self.input_mount
         elif (
@@ -167,6 +173,16 @@ class XnatViaCS(Xnat):
             return self.input_mount / row.id
         else:
             raise ArcanaNoDirectXnatMountException
+
+    def _make_uri(self, row: DataRow):
+        uri = "/data/archive/projects/" + row.dataset.id
+        if row.frequency == Clinical.session:
+            uri += "/experiments/" + row.id
+        elif row.frequency == Clinical.subject:
+            uri += "/subjects/" + row.id
+        elif row.frequency != Clinical.dataset:
+            uri += "/subjects/" + self._make_row_name(row)
+        return uri
 
 
 # def get_existing_docker_tags(docker_registry, docker_org, image_name):
