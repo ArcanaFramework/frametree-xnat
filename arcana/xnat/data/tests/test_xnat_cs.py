@@ -11,7 +11,7 @@ from arcana.xnat.deploy.command import XnatCommand
 from arcana.xnat.utils.testing import (
     install_and_launch_xnat_cs_command,
 )
-from fileformats.medimage import Nifti_Gzip_Bids, Nifti_Gzip_Bids_Fslgrad
+from fileformats.medimage import NiftiGzX, NiftiGzXBvec
 
 
 PIPELINE_NAME = "test-concatenate"
@@ -86,7 +86,7 @@ def run_spec(
                     "anat/T1w",
                     [
                         ResourceBlueprint(
-                            "Nifti_Gzip_Bids", Nifti_Gzip_Bids, ["anat/T1w.nii.gz", "anat/T1w.json"]
+                            "NiftiGzX", NiftiGzX, ["anat/T1w.nii.gz", "anat/T1w.json"]
                         )
                     ],
                 ),
@@ -94,7 +94,7 @@ def run_spec(
                     "anat/T2w",
                     [
                         ResourceBlueprint(
-                            "Nifti_Gzip_Bids", Nifti_Gzip_Bids, ["anat/T2w.nii.gz", "anat/T2w.json"]
+                            "NiftiGzX", NiftiGzX, ["anat/T2w.nii.gz", "anat/T2w.json"]
                         )
                     ],
                 ),
@@ -102,8 +102,8 @@ def run_spec(
                     "dwi/dwi",
                     [
                         ResourceBlueprint(
-                            "Nifti_Gzip_Bids_Fslgrad",
-                            Nifti_Gzip_Bids_Fslgrad,
+                            "NiftiGzXBvec",
+                            NiftiGzXBvec,
                             [
                                 "dwi/dwi.nii.gz",
                                 "dwi/dwi.json",
