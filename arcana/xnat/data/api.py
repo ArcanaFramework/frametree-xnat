@@ -145,11 +145,11 @@ class Xnat(DataStore):
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return item
 
-    def post(self, item: DataType, id: str, datatype: type, row: DataRow):
+    def post(self, item: DataType, path: str, datatype: type, row: DataRow):
         if datatype.is_fileset:
-            entry = self._post_fileset(item, id=id, datatype=datatype, row=row)
+            entry = self.post_fileset(item, path=path, datatype=datatype, row=row)
         elif datatype.is_field:
-            entry = self._post_field(item, id=id, datatype=datatype, row=row)
+            entry = self.post_field(item, path=path, datatype=datatype, row=row)
         else:
             raise DatatypeUnsupportedByStoreError(datatype, self)
         return entry
@@ -183,14 +183,14 @@ class Xnat(DataStore):
                 for xscan in xscans.values():
                     for xresource in xscan.resource.values():
                         row.add_entry(
-                            id=xscan.type,
+                            path=xscan.type,
                             datatype=FileSet,
                             order=xscan.id,
                             quality=xscan.quality,
                             uri=self.human_readable_uri(xresource.uri),
                         )
             for field_id in xrow.fields:
-                row.add_entry(id=varname2path(field_id), datatype=Field, uri=None)
+                row.add_entry(path=varname2path(field_id), datatype=Field, uri=None)
             for xresource in xrow.resources.values():
                 uri = self.human_readable_uri(xresource.uri)
                 try:
@@ -202,7 +202,7 @@ class Xnat(DataStore):
                 else:
                     item_metadata = {}
                 row.add_entry(
-                    id=varname2path(xresource.label),
+                    path=varname2path(xresource.label),
                     datatype=datatype,
                     uri=uri,
                     item_metadata=item_metadata,
@@ -335,8 +335,8 @@ class Xnat(DataStore):
         )
         return cached
 
-    def _post_fileset(
-        self, fileset: DataType, id: str, datatype: type, row: DataRow
+    def post_fileset(
+        self, fileset: DataType, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
         """
         Creates a new resource entry to store the fileset in then puts it in it
@@ -366,7 +366,7 @@ class Xnat(DataStore):
             )
             uri = self.human_readable_uri(xresource.uri)
             entry = row.add_entry(
-                id=id,
+                path=path,
                 datatype=datatype,
                 uri=uri,
             )
@@ -408,10 +408,10 @@ class Xnat(DataStore):
             xrow = self.get_xrow(entry.row)
             xrow.fields[path2varname(entry.id)] = str(field)
 
-    def _post_field(
-        self, field: Field, id: str, datatype: type, row: DataRow
+    def post_field(
+        self, field: Field, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
-        entry = row.add_entry(id, datatype, uri=None)
+        entry = row.add_entry(path, datatype, uri=None)
         self.put_field(field, entry)
         return entry
 

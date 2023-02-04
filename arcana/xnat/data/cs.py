@@ -147,12 +147,12 @@ class XnatViaCS(Xnat):
         )
         return cached
 
-    def post_fileset(self, fileset, id: str, datatype: type, row: DataRow) -> DataEntry:
+    def post_fileset(self, fileset, path: str, datatype: type, row: DataRow) -> DataEntry:
         uri = (
             self._make_uri(fileset.row) + "/RESOURCES/" + fileset.path
         )
         entry = row.add_entry(
-            id=id,
+            path=path,
             datatype=datatype,
             uri=uri
         )
