@@ -1,7 +1,7 @@
 import os.path
 from unittest.mock import patch
 from arcana.core.cli.dataset import add_source, add_sink
-from arcana.core.utils.testing import show_cli_trace
+from arcana.core.utils.misc import show_cli_trace
 
 
 def test_add_source_xnat(mutable_dataset, cli_runner, work_dir):

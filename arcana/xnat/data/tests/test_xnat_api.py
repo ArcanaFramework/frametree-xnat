@@ -106,7 +106,7 @@ def test_put_items(mutable_dataset: Dataset, caplog):
         all_checksums[deriv.name] = checksums = {}
         fspaths = []
         for fname in deriv.filenames:
-            test_file = DataStore.create_test_data_item(fname, deriv_tmp_dir)
+            test_file = DataStore.create_test_fsobject(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
             with open(deriv_tmp_dir / test_file, "rb") as f:
                 fhash.update(f.read())

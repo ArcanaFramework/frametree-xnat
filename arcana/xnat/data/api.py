@@ -853,14 +853,14 @@ class Xnat(DataStore):
 
                 for i, scan in enumerate(blueprint.scans, start=1):
                     # Create scan
-                    self.create_test_data_item(
+                    self.create_test_fsobject(
                         scan_id=i,
                         blueprint=scan,
                         parent=xsession,
                         source_data=source_data,
                     )
 
-    def create_test_data_item(
+    def create_test_fsobject(
         self, scan_id: int, blueprint: ScanBlueprint, parent, source_data: Path = None
     ):
         xclasses = parent.xnat_session.classes
@@ -875,7 +875,7 @@ class Xnat(DataStore):
                     fpath = source_data.joinpath(*fname.split("/"))
                     target_fpath = fpath.name
                 else:
-                    fpath = super().create_test_data_item(fname, tmp_dir)
+                    fpath = super().create_test_fsobject(fname, tmp_dir)
                     target_fpath = str(fpath)
                 xresource.upload(str(tmp_dir / fpath), target_fpath)
 
