@@ -181,18 +181,18 @@ class Xnat(DataStore):
                 pass  # A subject or project row
             else:
                 for xscan in xscans.values():
-                    for xresource in xscan.resource.values():
+                    for xresource in xscan.resources.values():
                         row.add_entry(
                             path=xscan.type,
                             datatype=FileSet,
                             order=xscan.id,
                             quality=xscan.quality,
-                            uri=self.human_readable_uri(xresource.uri),
+                            uri=self.human_readable_uri(xresource),
                         )
             for field_id in xrow.fields:
                 row.add_entry(path=varname2path(field_id), datatype=Field, uri=None)
             for xresource in xrow.resources.values():
-                uri = self.human_readable_uri(xresource.uri)
+                uri = self.human_readable_uri(xresource)
                 try:
                     datatype = FileSet.from_mime(xresource.format)
                 except FormatRecognitionError:
@@ -364,7 +364,7 @@ class Xnat(DataStore):
                 label=escaped_name,
                 format=datatype.mime_like,
             )
-            uri = self.human_readable_uri(xresource.uri)
+            uri = self.human_readable_uri(xresource)
             entry = row.add_entry(
                 path=path,
                 datatype=datatype,

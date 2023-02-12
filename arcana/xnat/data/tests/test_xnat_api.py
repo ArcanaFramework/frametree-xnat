@@ -118,9 +118,8 @@ def test_put_items(mutable_dataset: Dataset, caplog):
             fspaths.append(deriv_tmp_dir / test_file.parts[0])
         # Insert into first row of that row_frequency in xnat_dataset
         row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
-        item = row[deriv.name]
         with caplog.at_level(logging.INFO, logger="arcana"):
-            item.put(*fspaths)
+            row[deriv.name] = fspaths
         method_str = "direct" if type(mutable_dataset.store) is XnatViaCS else "api"
         assert f"{method_str} access" in caplog.text.lower()
 
