@@ -152,9 +152,9 @@ def test_pull_xnat_images(
 
     assert result.exit_code == 0, show_cli_trace(result)
 
-    with xnat_repository:
+    with xnat_repository.connection:
 
-        xlogin = xnat_repository.login
+        xlogin = xnat_repository.connection
 
         result = xlogin.get("/xapi/commands/")
 

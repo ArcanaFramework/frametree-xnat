@@ -710,47 +710,49 @@ class Xnat(DataStore):
             return None
         return store.load_dataset(dataset_name)
 
-    @classmethod
-    def human_readable_uri(cls, xresource):
-        """Convert the given URI to one that uses the labels instead of the internal
-        XNAT IDs to address the resource
+    # @classmethod
+    # def human_readable_uri(cls, xresource):
+    #     """Convert the given URI to one that uses the labels instead of the internal
+    #     XNAT IDs to address the resource
 
-        >>> from arcana.xnat.data import Xnat
-        >>> store = Xnat.load('my-xnat')
-        >>> xrow = store.login.experiments['MRH017_100_MR01']
-        >>> store.standard_uri(xrow)
+    #     >>> from arcana.xnat.data import Xnat
+    #     >>> store = Xnat.load('my-xnat')
+    #     >>> xrow = store.login.experiments['MRH017_100_MR01']
+    #     >>> store.standard_uri(xrow)
 
-        '/data/archive/projects/MRH017/subjects/MRH017_100/experiments/MRH017_100_MR01'
+    #     '/data/archive/projects/MRH017/subjects/MRH017_100/experiments/MRH017_100_MR01'
 
-        Parameters
-        ----------
-        xrow : xnat.ImageSession | xnat.Subject | xnat.Project
-            A row of the XNAT data tree
-        """
-        uri = xresource.uri
-        # Replace resource ID with resource label
-        uri = re.sub(r"(?<=/resources/)[^/]+", xresource.label, uri)
-        xrow = xresource.parent
-        if "experiments" in uri:
-            # Replace ImageSession ID with label in URI.
-            uri = re.sub(r"(?<=/experiments/)[^/]+", xrow.label, uri)
-        if "subjects" in uri:
-            try:
-                # If xrow is a ImageSession
-                subject_id = xrow.subject.label
-            except AttributeError:
-                # If xrow is a Subject
-                subject_id = xrow.label
-            except KeyError:
-                # There is a bug where the subject does't appeared to be cached
-                # so we use this as a workaround
-                subject_json = xrow.xnat_session.get_json(
-                    xrow.uri.split("/experiments")[0]
-                )
-                subject_id = subject_json["items"][0]["data_fields"]["label"]
-            # Replace subject ID with subject label in URI
-            uri = re.sub(r"(?<=/subjects/)[^/]+", subject_id, uri)
-        return uri
+    #     Parameters
+    #     ----------
+    #     xrow : xnat.ImageSession | xnat.Subject | xnat.Project
+    #         A row of the XNAT data tree
+    #     """
+    #     uri = xresource.uri
+    #     # Replace resource ID with resource label
+    #     uri = re.sub(r"(?<=/resources/)[^/]+", xresource.label, uri)
+    #     xrow = xresource.parent_obj
+    #     if xrow.__xsi_type__ == "xnat:mrScanData":
+            
+    #     if "experiments" in uri:
+    #         # Replace ImageSession ID with label in URI.
+    #         uri = re.sub(r"(?<=/experiments/)[^/]+", xrow.label, uri)
+    #     if "subjects" in uri:
+    #         try:
+    #             # If xrow is a ImageSession
+    #             subject_id = xrow.subject.label
+    #         except AttributeError:
+    #             # If xrow is a Subject
+    #             subject_id = xrow.label
+    #         except KeyError:
+    #             # There is a bug where the subject does't appeared to be cached
+    #             # so we use this as a workaround
+    #             subject_json = xrow.xnat_session.get_json(
+    #                 xrow.uri.split("/experiments")[0]
+    #             )
+    #             subject_id = subject_json["items"][0]["data_fields"]["label"]
+    #         # Replace subject ID with subject label in URI
+    #         uri = re.sub(r"(?<=/subjects/)[^/]+", subject_id, uri)
+    #     return uri
 
     @classmethod
     def standard_uri(cls, xrow):

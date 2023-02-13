@@ -65,9 +65,8 @@ def test_get_items(xnat_dataset, caplog):
     with caplog.at_level(logging.INFO, logger="arcana"):
         for row in xnat_dataset.rows(Clinical.session):
             for source_name, files in expected_files.items():
-                item = row[source_name]
                 try:
-                    item.get()
+                    item = row[source_name]
                 except PermissionError:
                     archive_dir = str(
                         Path.home()

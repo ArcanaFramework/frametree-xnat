@@ -168,9 +168,9 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     for pname, pval in params.items():
         launch_inputs[pname] = pval
 
-    with xnat_repository:
+    with xnat_repository.connection:
 
-        xlogin = xnat_repository.login
+        xlogin = xnat_repository.connection
 
         test_xsession = next(iter(xlogin.projects[dataset.id].experiments.values()))
 
