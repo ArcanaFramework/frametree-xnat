@@ -88,7 +88,7 @@ class XnatViaCS(Xnat):
             return super().get_fileset(entry)
         logger.info(
             "Getting %s from %s:%s row via direct access to archive directory",
-            entry.id,
+            entry.path,
             entry.row.frequency,
             entry.row.id,
         )
@@ -141,7 +141,7 @@ class XnatViaCS(Xnat):
         cached = fileset.copy_to(dest_dir, stem=stem)
         logger.info(
             "Put %s into %s:%s row via direct access to archive directory",
-            entry.id,
+            entry.path,
             entry.row.frequency,
             entry.row.id,
         )
@@ -161,7 +161,7 @@ class XnatViaCS(Xnat):
 
     def entry_path(self, entry: DataEntry) -> Path:
         """Determine the paths that derivatives will be saved at"""
-        return self.output_mount.joinpath(*entry.id.split("/"))
+        return self.output_mount.joinpath(*entry.path.split("/"))
 
     def get_input_mount(self, entry: DataEntry) -> Path:
         row = entry.row

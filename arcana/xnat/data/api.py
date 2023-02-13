@@ -183,16 +183,16 @@ class Xnat(DataStore):
                 for xscan in xscans.values():
                     for xresource in xscan.resources.values():
                         row.add_entry(
-                            path=xscan.type,
+                            path=f"{xscan.type}/{xresource.label}",
                             datatype=FileSet,
                             order=xscan.id,
                             quality=xscan.quality,
-                            uri=self.human_readable_uri(xresource),
+                            uri=xresource.uri,
                         )
             for field_id in xrow.fields:
                 row.add_entry(path=varname2path(field_id), datatype=Field, uri=None)
             for xresource in xrow.resources.values():
-                uri = self.human_readable_uri(xresource)
+                uri = xresource.uri
                 try:
                     datatype = FileSet.from_mime(xresource.format)
                 except FormatRecognitionError:
@@ -226,7 +226,7 @@ class Xnat(DataStore):
         """
         logger.info(
             "Getting %s from %s:%s row via API access",
-            entry.id,
+            entry.path,
             entry.row.frequency,
             entry.row.id,
         )
@@ -364,7 +364,7 @@ class Xnat(DataStore):
                 label=escaped_name,
                 format=datatype.mime_like,
             )
-            uri = self.human_readable_uri(xresource)
+            uri = xresource.uri
             entry = row.add_entry(
                 path=path,
                 datatype=datatype,
@@ -389,7 +389,7 @@ class Xnat(DataStore):
         """
         with self.connection:
             xrow = self.get_xrow(entry.row)
-            val = xrow.fields[path2varname(entry.id)]
+            val = xrow.fields[path2varname(entry.path)]
             val = val.replace("&quot;", '"')
         return entry.datatype(val)
 
@@ -406,7 +406,7 @@ class Xnat(DataStore):
         field = entry.datatype(field)
         with self.connection:
             xrow = self.get_xrow(entry.row)
-            xrow.fields[path2varname(entry.id)] = str(field)
+            xrow.fields[path2varname(entry.path)] = str(field)
 
     def post_field(
         self, field: Field, path: str, datatype: type, row: DataRow
@@ -875,11 +875,9 @@ class Xnat(DataStore):
             for fname in resource.filenames:
                 if source_data is not None:
                     fpath = source_data.joinpath(*fname.split("/"))
-                    target_fpath = fpath.name
                 else:
                     fpath = super().create_test_fsobject(fname, tmp_dir)
-                    target_fpath = str(fpath)
-                xresource.upload(str(tmp_dir / fpath), target_fpath)
+                xresource.upload(str(fpath), fpath.name)
 
 
 def append_suffix(path, suffix):
