@@ -16,6 +16,8 @@ import shutil
 import attrs
 import xnat.session
 from fileformats.core import FileSet, Field
+from fileformats.generic import BaseDirectory
+from fileformats.medimage import Dicom
 from fileformats.core.exceptions import FormatRecognitionError
 from arcana.core.utils.misc import (
     dir_modtime,
@@ -35,7 +37,6 @@ from arcana.core.exceptions import (
     DatatypeUnsupportedByStoreError,
 )
 from fileformats.core import DataType
-from fileformats.medimage import Dicom
 from arcana.core.utils.serialize import asdict
 from arcana.core.utils.misc import dict_diff
 from arcana.core.data.set import Dataset
@@ -102,13 +103,14 @@ class Xnat(DataStore):
         if not cache_dir.exists():
             raise ValueError(f"Cache dir, '{cache_dir}' does not exist")
 
-    def get(self, entry: DataEntry) -> DataType:
+    def get(self, entry: DataEntry, datatype: type) -> DataType:
         if entry.datatype.is_fileset:
-            item = self.get_fileset(entry)
+            item = self.get_fileset(entry, datatype)
         elif entry.datatype.is_field:
-            item = self.get_field(entry)
+            item = self.get_field(entry, datatype)
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
+        assert isinstance(item, datatype)
         return item
 
     def put(self, item: DataType, entry: DataEntry):
@@ -173,6 +175,8 @@ class Xnat(DataStore):
                 except FormatRecognitionError:
                     datatype = FileSet
                 if xresource.name in ("DICOM", "secondary"):
+                    if datatype is FileSet:
+                        datatype = Dicom
                     item_metadata = self.get_dicom_header(uri)
                 else:
                     item_metadata = {}
@@ -184,7 +188,7 @@ class Xnat(DataStore):
                     checksums=self.get_checksums(uri),
                 )
 
-    def get_fileset(self, entry: DataEntry) -> FileSet:
+    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
         """
         Caches a fileset to the local file system and returns the path to
         the cached files
@@ -193,6 +197,8 @@ class Xnat(DataStore):
         ----------
         entry: DataEntry
             The entry to retrieve the file-set for
+        datatype: type
+            the datatype to return the item as
 
         Returns
         -------
@@ -245,13 +251,13 @@ class Xnat(DataStore):
                     str(cache_path) + self.CHECKSUM_SUFFIX, "w", **JSON_ENCODING
                 ) as f:
                     json.dump(checksums, f, indent=2)
-        if entry.datatype is Dicom:
-            # DICOM directory file-sets are stored as separate files directly under the
+        if datatype.is_subtype_of(BaseDirectory):
+            # Directory file-sets are stored as separate files directly under the
             # resource, so in this case we take the whole cache path to be the fspath
             cache_paths = [cache_path]
         else:
             cache_paths = list(cache_path.iterdir())
-        return entry.datatype(cache_paths)
+        return datatype(cache_paths)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """
@@ -348,7 +354,7 @@ class Xnat(DataStore):
             self.put_fileset(fileset, entry)
         return entry
 
-    def get_field(self, entry: DataEntry) -> Field:
+    def get_field(self, entry: DataEntry, datatype: type) -> Field:
         """
         Retrieves a fields value
 
@@ -366,7 +372,7 @@ class Xnat(DataStore):
             xrow = self.get_xrow(entry.row)
             val = xrow.fields[path2varname(entry.path)]
             val = val.replace("&quot;", '"')
-        return entry.datatype(val)
+        return datatype(val)
 
     def put_field(self, field: Field, entry: DataEntry):
         """Store the value for a field in the XNAT repository

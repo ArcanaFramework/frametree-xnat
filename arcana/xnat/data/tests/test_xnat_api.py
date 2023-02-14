@@ -83,10 +83,10 @@ def test_get_items(xnat_dataset, caplog):
                     )
                     raise PermissionError(msg)
                 if item.is_dir:
-                    item_files = set(os.listdir(item.fspath))
+                    item_files = sorted(p.name for p in item.fspath.iterdir())
                 else:
-                    item_files = set(p.name for p in item.fspaths)
-                assert item_files == files
+                    item_files = sorted(p.name for p in item.fspaths)
+                assert item_files == sorted(Path(f).name for f in files)
     method_str = "direct" if type(xnat_dataset.store) is XnatViaCS else "api"
     assert f"{method_str} access" in caplog.text.lower()
 
