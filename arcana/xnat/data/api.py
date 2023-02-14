@@ -41,8 +41,8 @@ from arcana.core.utils.misc import dict_diff
 from arcana.core.data.set import Dataset
 from arcana.core.data.tree import DataTree
 from arcana.core.data.entry import DataEntry
-from arcana.core.data.space import DataSpace
 from arcana.core.data import Clinical
+from .testing import ScanBlueprint
 
 
 logger = logging.getLogger("arcana")
@@ -53,31 +53,6 @@ tag_parse_re = re.compile(r"\((\d+),(\d+)\)")
 RELEVANT_DICOM_TAG_TYPES = set(("UI", "CS", "DA", "TM", "SH", "LO", "PN", "ST", "AS"))
 
 # COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}
-
-
-@attrs.define
-class ResourceBlueprint:
-
-    name: str
-    datatype: type
-    filenames: ty.List[str]
-
-
-@attrs.define
-class ScanBlueprint:
-
-    name: str
-    resources: ty.List[ResourceBlueprint]
-
-
-@attrs.define(slots=False, kw_only=True)
-class TestXnatDatasetBlueprint(TestDatasetBlueprint):
-
-    scans: ty.List[ScanBlueprint]
-
-    # Overwrite attributes in core blueprint class
-    hierarchy: list[DataSpace] = [Clinical.subject, Clinical.session]
-    files: list[str] = None
 
 
 @attrs.define
@@ -875,7 +850,7 @@ class Xnat(DataStore):
             for fname in resource.filenames:
                 if source_data is not None:
                     fpath = source_data.joinpath(*fname.split("/"))
-                else:
+                if source_data is None or not fpath.exists():
                     fpath = super().create_test_fsobject(fname, tmp_dir)
                 xresource.upload(str(fpath), fpath.name)
 
