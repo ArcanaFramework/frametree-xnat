@@ -174,7 +174,7 @@ class Xnat(DataStore):
                     datatype = FileSet.from_mime(xresource.format)
                 except FormatRecognitionError:
                     datatype = FileSet
-                if xresource.name in ("DICOM", "secondary"):
+                if xresource.label in ("DICOM", "secondary"):
                     if datatype is FileSet:
                         datatype = Dicom
                     item_metadata = self.get_dicom_header(uri)
@@ -282,24 +282,32 @@ class Xnat(DataStore):
                 uri=entry.uri, xnat_session=self.connection.session
             )
             # Create cache path
-            cache_path = self.cache_path(fileset)
+            cache_path = self.cache_path(entry.uri)
             if cache_path.exists():
                 shutil.rmtree(cache_path)
             # Copy to cache
-            cached = fileset.copy_to(cache_path, make_dirs=True)
-            xresource.upload_dir(cache_path, overwrite=True)
-            checksums = self.get_checksums(self._get_resource_uri(xresource))
+            if fileset.is_dir:
+                # Directories are mapped to the cache directory, not uploaded within it
+                # to match how DICOMs are stored on XNAT (not sure this is a good idea)
+                cached = fileset.copy_to(
+                    cache_path.parent, stem=cache_path.name, make_dirs=True
+                )
+                xresource.upload_dir(str(cached), overwrite=True)
+            else:
+                cached = fileset.copy_to(cache_path, make_dirs=True)
+                xresource.upload_dir(cache_path, overwrite=True)
+            checksums = self.get_checksums(entry.uri)
             calculated_checksums = cached.hash_files(
-                crypto=hashlib.md5, relative_to=cached.fspath.parent
+                crypto=hashlib.md5, relative_to=cache_path
             )
             if checksums != calculated_checksums:
                 raise ArcanaError(
-                    f"Checksums for uploaded fileset at {entry} don't match expected:\n\n"
+                    f"Checksums for uploaded file-set at {entry} don't match that of the original files:\n\n"
                     + dict_diff(
                         calculated_checksums,
                         checksums,
-                        label1="calculated",
-                        label2="uploaded",
+                        label1="original",
+                        label2="remote",
                     )
                 )
         # Save checksums, to avoid having to redownload if they haven't been altered
@@ -310,9 +318,9 @@ class Xnat(DataStore):
             json.dump(checksums, f, indent=2)
         logger.info(
             "Put %s into %s:%s row via API access",
-            fileset.path,
-            fileset.row.frequency,
-            fileset.row.id,
+            entry.path,
+            entry.row.frequency,
+            entry.row.id,
         )
         return cached
 
@@ -336,21 +344,19 @@ class Xnat(DataStore):
         """
         # Open XNAT connection session
         with self.connection:
-            # Add session for derived scans if not present
-            xrow = self.get_xrow(row)
-            escaped_name = path2varname(id)
-            # Create the new resource for the fileset
+            # Create the new resource for the fileset entry
             xresource = self.connection.classes.ResourceCatalog(
-                parent=xrow,
-                label=escaped_name,
+                parent=self.get_xrow(row),
+                label=path2varname(path),
                 format=datatype.mime_like,
             )
-            uri = self._get_resource_uri(xresource)
+            # Add corresponding entry to row
             entry = row.add_entry(
                 path=path,
                 datatype=datatype,
-                uri=uri,
+                uri=self._get_resource_uri(xresource),
             )
+            # Put the fileset data into the entry
             self.put_fileset(fileset, entry)
         return entry
 
@@ -713,7 +719,7 @@ class Xnat(DataStore):
     #     uri = re.sub(r"(?<=/resources/)[^/]+", xresource.label, uri)
     #     xrow = xresource.parent_obj
     #     if xrow.__xsi_type__ == "xnat:mrScanData":
-            
+
     #     if "experiments" in uri:
     #         # Replace ImageSession ID with label in URI.
     #         uri = re.sub(r"(?<=/experiments/)[^/]+", xrow.label, uri)
@@ -854,10 +860,13 @@ class Xnat(DataStore):
             xresource = xscan.create_resource(resource.name)
             # Create the dummy files
             for fname in resource.filenames:
-                if source_data is not None:
-                    fpath = source_data.joinpath(*fname.split("/"))
-                if source_data is None or not fpath.exists():
-                    fpath = super().create_test_fsobject(fname, tmp_dir)
+                fpath = super().create_test_fsobject(
+                    fname,
+                    tmp_dir,
+                    source_data=source_data,
+                    source_fallback=True,
+                    escape_source_name=False,
+                )
                 xresource.upload(str(fpath), fpath.name)
 
     @classmethod

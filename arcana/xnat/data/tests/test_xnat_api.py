@@ -5,9 +5,9 @@ import operator as op
 import shutil
 import logging
 from pathlib import Path
-import hashlib
 from tempfile import mkdtemp
 from functools import reduce
+from fileformats.core import FileSet
 from arcana.core.data.store import DataStore
 from arcana.core.data.space import Clinical
 from arcana.core.data.set import Dataset
@@ -94,7 +94,7 @@ def test_get_items(xnat_dataset, caplog):
     assert f"{method_str} access" in caplog.text.lower()
 
 
-def test_put_items(mutable_dataset: Dataset, caplog):
+def test_put_items(mutable_dataset: Dataset, source_data: Path, caplog):
     blueprint = mutable_dataset.__annotations__["blueprint"]
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
@@ -105,19 +105,22 @@ def test_put_items(mutable_dataset: Dataset, caplog):
         deriv_tmp_dir = tmp_dir / deriv.name
         # Create test files, calculate checksums and recorded expected paths
         # for inserted files
-        all_checksums[deriv.name] = checksums = {}
         fspaths = []
         for fname in deriv.filenames:
-            test_file = DataStore.create_test_fsobject(fname, deriv_tmp_dir)
-            fhash = hashlib.md5()
-            with open(deriv_tmp_dir / test_file, "rb") as f:
-                fhash.update(f.read())
-            try:
-                rel_path = str(test_file.relative_to(Path(deriv.filenames[0])))
-            except ValueError:
-                rel_path = ".".join(test_file.suffixes)[1:]
-            checksums[rel_path] = fhash.hexdigest()
-            fspaths.append(deriv_tmp_dir / test_file.parts[0])
+            fspaths.append(
+                DataStore.create_test_fsobject(
+                    fname=fname,
+                    dpath=deriv_tmp_dir,
+                    source_data=source_data,
+                    source_fallback=True,
+                )
+            )
+
+        # if len(fspaths) == 1 and fspaths[0].is_dir():
+        #     relative_to = fspaths[0]
+        # else:
+        #     relative_to = deriv_tmp_dir
+        all_checksums[deriv.name] = deriv.datatype(fspaths).hash_files()
         # Insert into first row of that row_frequency in xnat_dataset
         row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
         with caplog.at_level(logging.INFO, logger="arcana"):
@@ -131,22 +134,11 @@ def test_put_items(mutable_dataset: Dataset, caplog):
         for deriv in blueprint.derivatives:
             row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
             item = row[deriv.name]
-            item.get_checksums(force_calculate=(access_method == "cs"))
             assert isinstance(item, deriv.datatype)
-            assert item.checksums == all_checksums[deriv.name]
-            item.get()
-            assert all(p.exists() for p in item.fspaths)
+            assert item.hash_files() == all_checksums[deriv.name]
 
     if access_method == "api":
-        check_inserted()
-        # Check read from cached files
-        mutable_dataset.refresh()
-        # Note that we can't check the direct access put by this method since
-        # it isn't registered with the XNAT database and therefore isn't
-        # found by `find_cells`. In real life this is handled by the output
-        # handlers of the container service
-        check_inserted()
+        check_inserted()  # Check cache
         # Check downloaded by deleting the cache dir
         shutil.rmtree(mutable_dataset.store.cache_dir / "projects" / mutable_dataset.id)
-        mutable_dataset.refresh()
         check_inserted()
