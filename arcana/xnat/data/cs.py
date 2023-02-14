@@ -130,15 +130,13 @@ class XnatViaCS(Xnat):
                 fspaths = list(stem_path.iterdir())
         return datatype(fspaths)
 
-    def put_fileset(
-        self, fileset: FileSet, entry: DataEntry
-    ) -> FileSet:
+    def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         entry_path = self.entry_path(entry)
-        dest_dir = entry_path.parent
-        stem = entry_path.name
-        if dest_dir.exists():
-            shutil.rmtree(dest_dir)
-        cached = fileset.copy_to(dest_dir, stem=stem, make_dirs=True)
+        if entry_path.exists():
+            shutil.rmtree(entry_path)
+        cached = fileset.copy_to(
+            dest_dir=entry_path.parent, stem=entry_path.name, make_dirs=True
+        )
         logger.info(
             "Put %s into %s:%s row via direct access to archive directory",
             entry.path,
@@ -147,13 +145,11 @@ class XnatViaCS(Xnat):
         )
         return cached
 
-    def post_fileset(self, fileset, path: str, datatype: type, row: DataRow) -> DataEntry:
+    def post_fileset(
+        self, fileset, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
         uri = self._make_uri(row) + "/RESOURCES/" + path
-        entry = row.add_entry(
-            path=path,
-            datatype=datatype,
-            uri=uri
-        )
+        entry = row.add_entry(path=path, datatype=datatype, uri=uri)
         self.put_fileset(fileset, entry)
         return entry
 
