@@ -27,8 +27,8 @@ from arcana.core.utils.misc import (
 )
 from arcana.core.data.store import (
     DataStore,
-    TestDatasetBlueprint,
 )
+from arcana.core.data.testing import TestDatasetBlueprint
 from arcana.core.data.row import DataRow
 from arcana.core.exceptions import (
     ArcanaError,

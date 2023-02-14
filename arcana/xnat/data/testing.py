@@ -2,7 +2,7 @@ import typing as ty
 import attrs
 from arcana.core.data.space import DataSpace
 from arcana.core.data import Clinical
-from arcana.core.data.store import TestDatasetBlueprint
+from arcana.core.data.testing import TestDatasetBlueprint
 
 
 @attrs.define
