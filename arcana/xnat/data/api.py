@@ -164,12 +164,12 @@ class Xnat(DataStore):
                             datatype=FileSet,
                             order=xscan.id,
                             quality=xscan.quality,
-                            uri=xresource.uri,
+                            uri=self._get_resource_uri(xresource),
                         )
             for field_id in xrow.fields:
                 row.add_entry(path=varname2path(field_id), datatype=Field, uri=None)
             for xresource in xrow.resources.values():
-                uri = xresource.uri
+                uri = self._get_resource_uri(xresource)
                 try:
                     datatype = FileSet.from_mime(xresource.format)
                 except FormatRecognitionError:
@@ -288,7 +288,7 @@ class Xnat(DataStore):
             # Copy to cache
             cached = fileset.copy_to(cache_path, make_dirs=True)
             xresource.upload_dir(cache_path, overwrite=True)
-            checksums = self.get_checksums(xresource.uri)
+            checksums = self.get_checksums(self._get_resource_uri(xresource))
             calculated_checksums = cached.hash_files(
                 crypto=hashlib.md5, relative_to=cached.fspath.parent
             )
@@ -345,7 +345,7 @@ class Xnat(DataStore):
                 label=escaped_name,
                 format=datatype.mime_like,
             )
-            uri = xresource.uri
+            uri = self._get_resource_uri(xresource)
             entry = row.add_entry(
                 path=path,
                 datatype=datatype,
@@ -708,7 +708,7 @@ class Xnat(DataStore):
     #     xrow : xnat.ImageSession | xnat.Subject | xnat.Project
     #         A row of the XNAT data tree
     #     """
-    #     uri = xresource.uri
+    #     uri = self._get_resource_uri(xresource)
     #     # Replace resource ID with resource label
     #     uri = re.sub(r"(?<=/resources/)[^/]+", xresource.label, uri)
     #     xrow = xresource.parent_obj
@@ -859,6 +859,11 @@ class Xnat(DataStore):
                 if source_data is None or not fpath.exists():
                     fpath = super().create_test_fsobject(fname, tmp_dir)
                 xresource.upload(str(fpath), fpath.name)
+
+    @classmethod
+    def _get_resource_uri(cls, xresource):
+        """Replaces the resource ID with the resource label"""
+        return re.match(r"(.*/)[^/]+", xresource.uri).group(1) + xresource.label
 
 
 def append_suffix(path, suffix):

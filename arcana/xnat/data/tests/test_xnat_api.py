@@ -83,9 +83,12 @@ def test_get_items(xnat_dataset, caplog):
                     )
                     raise PermissionError(msg)
                 if item.is_dir:
-                    item_files = sorted(p.name for p in item.fspath.iterdir())
+                    fspaths = item.fspath.iterdir()
                 else:
-                    item_files = sorted(p.name for p in item.fspaths)
+                    fspaths = item.fspaths
+                item_files = sorted(
+                    p.name for p in fspaths if not p.name.endswith("catalog.xml")
+                )
                 assert item_files == sorted(Path(f).name for f in files)
     method_str = "direct" if type(xnat_dataset.store) is XnatViaCS else "api"
     assert f"{method_str} access" in caplog.text.lower()
@@ -144,8 +147,6 @@ def test_put_items(mutable_dataset: Dataset, caplog):
         # handlers of the container service
         check_inserted()
         # Check downloaded by deleting the cache dir
-        shutil.rmtree(
-            mutable_dataset.store.cache_dir / "projects" / mutable_dataset.id
-        )
+        shutil.rmtree(mutable_dataset.store.cache_dir / "projects" / mutable_dataset.id)
         mutable_dataset.refresh()
         check_inserted()

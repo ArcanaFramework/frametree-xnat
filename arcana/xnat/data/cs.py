@@ -9,7 +9,7 @@ from pathlib import Path
 import shutil
 import attrs
 from fileformats.core.base import FileSet
-from fileformats.medimage import Dicom
+from fileformats.generic import BaseDirectory
 from arcana.core.data import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
@@ -78,7 +78,7 @@ class XnatViaCS(Xnat):
     def password_default(self):
         return os.environ["XNAT_PASS"]
 
-    def get_fileset(self, entry: DataEntry) -> FileSet:
+    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
         """Attempt to get fileset directly from the input mount, falling back to API
         access if that fails"""
         try:
@@ -103,9 +103,9 @@ class XnatViaCS(Xnat):
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-            if entry.datatype.is_dir:
+            if datatype.is_subtype_of(BaseDirectory):
                 # Link files from resource dir into temp dir to avoid catalog XML
-                dir_path = self.cache_path(entry)
+                dir_path = self.cache_path(entry.uri)
                 try:
                     shutil.rmtree(dir_path)
                 except FileNotFoundError:
@@ -124,11 +124,11 @@ class XnatViaCS(Xnat):
                 entry,
             )
             stem_path = self.entry_path(entry)
-            if entry.datatype is Dicom:
+            if datatype.is_subtype_of(BaseDirectory):
                 fspaths = [stem_path]
             else:
                 fspaths = list(stem_path.iterdir())
-        return fspaths
+        return datatype(fspaths)
 
     def put_fileset(
         self, fileset: FileSet, entry: DataEntry
