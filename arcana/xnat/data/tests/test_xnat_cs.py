@@ -42,7 +42,7 @@ def run_spec(
             "registry": "a.docker.registry.io",
             "packages": {
                 "system": ["git", "vim"],
-                "pip": ["arcana-xnat"],
+                "pip": ["arcana-xnat", "arcana-testing"],
             },
         }
         blueprint = TEST_XNAT_DATASET_BLUEPRINTS["concatenate_test"]

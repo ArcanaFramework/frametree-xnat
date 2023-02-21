@@ -131,7 +131,7 @@ class Xnat(DataStore):
             raise DatatypeUnsupportedByStoreError(datatype, self)
         return entry
 
-    def populate_tree(self, tree: DataTree):
+    def scan_tree(self, tree: DataTree):
         """
         Find all filesets, fields and provenance provenances within an XNAT
         project and create data tree within dataset
@@ -146,7 +146,7 @@ class Xnat(DataStore):
             for exp in self.connection.projects[tree.dataset_id].experiments.values():
                 tree.add_leaf([exp.subject.label, exp.label])
 
-    def populate_row(self, row: DataRow):
+    def scan_row(self, row: DataRow):
         """Find all resource objects at scan and imaging session/subject/project level
         and create corresponding file-set entries, and list all fields"""
         with self.connection:
@@ -817,6 +817,17 @@ class Xnat(DataStore):
     SITE_LICENSES_DATASET_ENV = "ARCANA_SITE_LICENSE_DATASET"
     SITE_LICENSES_USER_ENV = "ARCANA_SITE_LICENSE_USER"
     SITE_LICENSES_PASS_ENV = "ARCANA_SITE_LICENSE_PASS"
+
+    def create_empty_dataset(
+        self,
+        id: str,
+        hierarchy: list[str],
+        row_ids: list[list[str]],
+        space: type = Clinical,
+        name: str = None,
+        **kwargs,
+    ):
+        raise NotImplementedError
 
     def create_test_dataset_data(
         self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
