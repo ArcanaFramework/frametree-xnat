@@ -342,6 +342,13 @@ class Xnat(DataStore):
         list[Path]
             The locations of the locally cached paths
         """
+        if path.startswith("@"):
+            path = path[1:]
+        else:
+            raise NotImplementedError(
+                f"Posting fileset to non-derivative path '{path}' is not currently "
+                "supported"
+            )
         # Open XNAT connection session
         with self.connection:
             # Create the new resource for the fileset entry
