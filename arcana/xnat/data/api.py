@@ -131,7 +131,7 @@ class Xnat(DataStore):
             raise DatatypeUnsupportedByStoreError(datatype, self)
         return entry
 
-    def scan_tree(self, tree: DataTree):
+    def populate_tree(self, tree: DataTree):
         """
         Find all filesets, fields and provenance provenances within an XNAT
         project and create data tree within dataset
@@ -146,7 +146,7 @@ class Xnat(DataStore):
             for exp in self.connection.projects[tree.dataset_id].experiments.values():
                 tree.add_leaf([exp.subject.label, exp.label])
 
-    def scan_row(self, row: DataRow):
+    def populate_row(self, row: DataRow):
         """Find all resource objects at scan and imaging session/subject/project level
         and create corresponding file-set entries, and list all fields"""
         with self.connection:
