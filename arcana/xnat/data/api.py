@@ -94,7 +94,7 @@ class Xnat(DataStore):
     FIELD_PROV_RESOURCE = "__provenance__"
     depth = 2
     DEFAULT_SPACE = Clinical
-    DEFAULT_HIERARCHY = ["subject", "session"]
+    DEFAULT_HIERARCHY = ["subject", "timepoint"]
     METADATA_RESOURCE = "__arcana__"
     LICENSE_RESOURCE = "LICENSES"
 
@@ -181,7 +181,7 @@ class Xnat(DataStore):
                 else:
                     item_metadata = {}
                 row.add_entry(
-                    path=varname2path(xresource.label),
+                    path="@" + varname2path(xresource.label),
                     datatype=datatype,
                     uri=uri,
                     item_metadata=item_metadata,

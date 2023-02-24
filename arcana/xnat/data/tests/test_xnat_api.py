@@ -133,7 +133,8 @@ def test_put_items(mutable_dataset: Dataset, source_data: Path, caplog):
     def check_inserted():
         for deriv in blueprint.derivatives:
             row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
-            item = row[deriv.name]
+            cell = row.cell(deriv.name, allow_empty=False)
+            item = cell.item
             assert isinstance(item, deriv.datatype)
             assert item.hash_files() == all_checksums[deriv.name]
 
