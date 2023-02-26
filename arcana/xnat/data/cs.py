@@ -82,7 +82,7 @@ class XnatViaCS(Xnat):
         """Attempt to get fileset directly from the input mount, falling back to API
         access if that fails"""
         try:
-            input_mount = self.get_input_mount(entry)
+            input_mount = self.get_input_mount(entry.row)
         except ArcanaNoDirectXnatMountException:
             # Fallback to API access
             return super().get_fileset(entry)
@@ -92,7 +92,14 @@ class XnatViaCS(Xnat):
             entry.row.frequency,
             entry.row.id,
         )
-        if entry.uri:
+        if entry.in_derivative_namespace:
+            # entry is in input mount
+            stem_path = self.entry_path(entry)
+            if datatype.is_subtype_of(BaseDirectory):
+                fspaths = [stem_path]
+            else:
+                fspaths = list(stem_path.iterdir())
+        else:
             path = re.match(
                 r"/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/"
                 r"(?:subjects/[a-zA-Z0-9\-_]+/)?"
@@ -117,20 +124,11 @@ class XnatViaCS(Xnat):
                 fspaths = [dir_path]
             else:
                 fspaths = list(resource_path.iterdir())
-        else:
-            logger.debug(
-                "No URI set for fileset entry %s, assuming it is a newly created "
-                "derivative on the output mount",
-                entry,
-            )
-            stem_path = self.entry_path(entry)
-            if datatype.is_subtype_of(BaseDirectory):
-                fspaths = [stem_path]
-            else:
-                fspaths = list(stem_path.iterdir())
         return datatype(fspaths)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
+        if not entry.in_derivative_namespace:
+            super().put_fileset(fileset, entry)  # Fallback to API access
         entry_path = self.entry_path(entry)
         if entry_path.exists():
             shutil.rmtree(entry_path)
@@ -155,10 +153,10 @@ class XnatViaCS(Xnat):
 
     def entry_path(self, entry: DataEntry) -> Path:
         """Determine the paths that derivatives will be saved at"""
-        return self.output_mount.joinpath(*entry.path.split("/"))
+        assert entry.in_derivative_namespace
+        return self.output_mount.joinpath(*entry.path.split("/")[1:])
 
-    def get_input_mount(self, entry: DataEntry) -> Path:
-        row = entry.row
+    def get_input_mount(self, row: DataRow) -> Path:
         if self.row_frequency == row.frequency:
             return self.input_mount
         elif (
