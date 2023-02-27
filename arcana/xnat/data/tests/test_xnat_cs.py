@@ -11,7 +11,7 @@ from arcana.xnat.deploy.command import XnatCommand
 from arcana.xnat.utils.testing import (
     install_and_launch_xnat_cs_command,
 )
-from fileformats.medimage import NiftiGzX, NiftiGzXFslgrad
+from fileformats.medimage import NiftiGzX, NiftiGzXBvec
 
 
 PIPELINE_NAME = "test-concatenate"
@@ -42,7 +42,7 @@ def run_spec(
             "registry": "a.docker.registry.io",
             "packages": {
                 "system": ["git", "vim"],
-                "pip": ["arcana-xnat"],
+                "pip": ["arcana-xnat", "arcana-testing"],
             },
         }
         blueprint = TEST_XNAT_DATASET_BLUEPRINTS["concatenate_test"]
@@ -102,8 +102,8 @@ def run_spec(
                     "dwi/dwi",
                     [
                         ResourceBlueprint(
-                            "NiftiGzXFslgrad",
-                            NiftiGzXFslgrad,
+                            "NiftiGzXBvec",
+                            NiftiGzXBvec,
                             [
                                 "dwi/dwi.nii.gz",
                                 "dwi/dwi.json",
@@ -168,9 +168,9 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     for pname, pval in params.items():
         launch_inputs[pname] = pval
 
-    with xnat_repository:
+    with xnat_repository.connection:
 
-        xlogin = xnat_repository.login
+        xlogin = xnat_repository.connection
 
         test_xsession = next(iter(xlogin.projects[dataset.id].experiments.values()))
 
