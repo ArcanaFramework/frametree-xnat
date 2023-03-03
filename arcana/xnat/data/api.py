@@ -73,6 +73,10 @@ class Xnat(RemoteStore):
     DEFAULT_SPACE = Clinical
     DEFAULT_HIERARCHY = ["subject", "timepoint"]
 
+    #############################
+    # DataStore abstractmethods #
+    #############################
+
     def populate_tree(self, tree: DataTree):
         """
         Find all filesets, fields and provenance provenances within an XNAT
@@ -132,165 +136,6 @@ class Xnat(RemoteStore):
                     uri=uri,
                     checksums=self.get_checksums(uri),
                 )
-
-    def download_files(
-        self, entry: DataEntry, tmp_download_dir: Path, target_path: Path
-    ):
-        with self.connection:
-            # Download resource to zip file
-            zip_path = op.join(tmp_download_dir, "download.zip")
-            with open(zip_path, "wb") as f:
-                self.connection.download_stream(
-                    entry.uri + "/files", f, format="zip", verbose=True
-                )
-            # Extract downloaded zip file
-            expanded_dir = tmp_download_dir / "expanded"
-            try:
-                with ZipFile(zip_path) as zip_file:
-                    zip_file.extractall(expanded_dir)
-            except BadZipfile as e:
-                raise ArcanaError(f"Could not unzip file '{zip_path}' ({e})") from e
-            data_path = glob(str(expanded_dir) + "/**/files", recursive=True)[0]
-            # Remove existing cache if present
-            try:
-                shutil.rmtree(target_path)
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise e
-            shutil.move(data_path, target_path)
-
-    def upload_files(self, cache_path: Path, entry: DataEntry):
-        # Copy to cache
-        xresource = self.connection.classes.Resource(
-            uri=entry.uri, xnat_session=self.connection.session
-        )
-        xresource.upload_dir(cache_path, overwrite=True)
-
-    def create_fileset_entry(
-        self, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        """
-        Creates a new resource entry to store a fileset
-
-        Parameters
-        ----------
-        fileset : FileSet
-            The file-set to put the paths for
-        fspaths: list[Path or str  ]
-            The paths of files/directories to put into the XNAT repository
-
-        Returns
-        -------
-        list[Path]
-            The locations of the locally cached paths
-        """
-        if path.startswith("@"):
-            path = path[1:]
-        else:
-            raise NotImplementedError(
-                f"Posting fileset to non-derivative path '{path}' is not currently "
-                "supported"
-            )
-        # Open XNAT connection session
-        with self.connection:
-            # Create the new resource for the fileset entry
-            xresource = self.connection.classes.ResourceCatalog(
-                parent=self.get_xrow(row),
-                label=path2varname(path),
-                format=datatype.mime_like,
-            )
-            # Add corresponding entry to row
-            entry = row.add_entry(
-                path=path,
-                datatype=datatype,
-                uri=self._get_resource_uri(xresource),
-            )
-        return entry
-
-    def get_field(self, entry: DataEntry, datatype: type) -> Field:
-        """
-        Retrieves a fields value
-
-        Parameters
-        ----------
-        field : Field
-            The field to retrieve
-
-        Returns
-        -------
-        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
-            The value of the field
-        """
-        with self.connection:
-            xrow = self.get_xrow(entry.row)
-            val = xrow.fields[path2varname(entry.path)]
-            val = val.replace("&quot;", '"')
-        return datatype(val)
-
-    def put_field(self, field: Field, entry: DataEntry):
-        """Store the value for a field in the XNAT repository
-
-        Parameters
-        ----------
-        field : Field
-            the field to store the value for
-        value : str or float or int or bool
-            the value to store
-        """
-        field = entry.datatype(field)
-        with self.connection:
-            xrow = self.get_xrow(entry.row)
-            xrow.fields[path2varname(entry.path)] = str(field)
-
-    def post_field(
-        self, field: Field, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        entry = row.add_entry(path, datatype, uri=None)
-        self.put_field(field, entry)
-        return entry
-
-    def get_checksums(self, uri: str):
-        """
-        Downloads the MD5 digests associated with the files in the file-set.
-        These are saved with the downloaded files in the cache and used to
-        check if the files have been updated on the server
-
-        Parameters
-        ----------
-        fileset: FileSet
-            the fileset to get the checksums for. Used to
-            determine the primary file within the resource and change the
-            corresponding key in the checksums dictionary to '.' to match
-            the way it is generated locally by Arcana.
-        """
-        if uri is None:
-            raise ArcanaUsageError(
-                "Can't retrieve checksums as URI has not been set for {}".format(uri)
-            )
-        with self.connection:
-            checksums = {
-                r["URI"]: r["digest"]
-                for r in self.connection.get_json(uri + "/files")["ResultSet"]["Result"]
-            }
-        # strip base URI to get relative paths of files within the resource
-        checksums = {
-            re.match(r".*/resources/\w+/files/(.*)$", u).group(1): c
-            for u, c in sorted(checksums.items())
-        }
-        return checksums
-
-    def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
-        """
-        Downloads the checksum digests associated with the files in the file-set.
-        These are saved with the downloaded files in the cache and used to
-        check if the files have been updated on the server
-
-        Parameters
-        ----------
-        uri: str
-            uri of the data item to download the checksums for
-        """
-        return fileset.hash_files(crypto=hashlib.md5, relative_to=fileset.fspath.parent)    
 
     def save_dataset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
@@ -371,6 +216,208 @@ class Xnat(RemoteStore):
             provenance = json.load(f)
         return provenance
 
+    def create_test_dataset_data(
+        self, blueprint: TestXnatDatasetBlueprint, dataset_id: str, source_data: Path = None
+    ):
+        """
+        Creates dataset for each entry in dataset_structures
+        """
+
+        with self.connection:
+            self.connection.put(f"/data/archive/projects/{dataset_id}")
+
+        with self.connection:
+            xproject = self.connection.projects[dataset_id]
+            xclasses = self.connection.classes
+            for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
+                ids = dict(zip(Clinical.axes(), id_tple))
+                # Create subject
+                subject_label = "".join(f"{b}{ids[b]}" for b in Clinical.subject.span())
+                xsubject = xclasses.SubjectData(label=subject_label, parent=xproject)
+                # Create session
+                session_label = "".join(f"{b}{ids[b]}" for b in Clinical.session.span())
+                xsession = xclasses.MrSessionData(label=session_label, parent=xsubject)
+
+                for i, scan in enumerate(blueprint.scans, start=1):
+                    # Create scan
+                    self.create_test_fsobject(
+                        scan_id=i,
+                        blueprint=scan,
+                        parent=xsession,
+                        source_data=source_data,
+                    )
+
+    ################################
+    # RemoteStore-specific methods #
+    ################################
+
+    def download_files(
+        self, entry: DataEntry, download_dir: Path, target_path: Path
+    ):
+        with self.connection:
+            # Download resource to zip file
+            zip_path = op.join(download_dir, "download.zip")
+            with open(zip_path, "wb") as f:
+                self.connection.download_stream(
+                    entry.uri + "/files", f, format="zip", verbose=True
+                )
+            # Extract downloaded zip file
+            expanded_dir = download_dir / "expanded"
+            try:
+                with ZipFile(zip_path) as zip_file:
+                    zip_file.extractall(expanded_dir)
+            except BadZipfile as e:
+                raise ArcanaError(f"Could not unzip file '{zip_path}' ({e})") from e
+            data_path = glob(str(expanded_dir) + "/**/files", recursive=True)[0]
+            # Remove existing cache if present
+            try:
+                shutil.rmtree(target_path)
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise e
+            shutil.move(data_path, target_path)
+
+    def upload_files(self, cache_path: Path, entry: DataEntry):
+        # Copy to cache
+        xresource = self.connection.classes.Resource(
+            uri=entry.uri, xnat_session=self.connection.session
+        )
+        xresource.upload_dir(cache_path, overwrite=True)
+
+    def download_value(self, entry: DataEntry):
+        """
+        Retrieves a fields value
+
+        Parameters
+        ----------
+        field : Field
+            The field to retrieve
+
+        Returns
+        -------
+        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
+            The value of the field
+        """
+        with self.connection:
+            xrow = self.get_xrow(entry.row)
+            val = xrow.fields[path2varname(entry.path)]
+            val = val.replace("&quot;", '"')
+        return val
+
+    def upload_value(self, value, entry: DataEntry):
+        """Store the value for a field in the XNAT repository
+
+        Parameters
+        ----------
+        field : Field
+            the field to store the value for
+        value : str or float or int or bool
+            the value to store
+        """
+        with self.connection:
+            xrow = self.get_xrow(entry.row)
+            xrow.fields[path2varname(entry.path)] = str(value)
+
+    def create_fileset_entry(
+        self, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        """
+        Creates a new resource entry to store a fileset
+
+        Parameters
+        ----------
+        path: str
+            the path to the entry relative to the row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row of the data entry
+        """
+        if path.startswith("@"):
+            path = path[1:]
+        else:
+            raise NotImplementedError(
+                f"Posting fileset to non-derivative path '{path}' is not currently "
+                "supported"
+            )
+        # Open XNAT connection session
+        with self.connection:
+            # Create the new resource for the fileset entry
+            xresource = self.connection.classes.ResourceCatalog(
+                parent=self.get_xrow(row),
+                label=path2varname(path),
+                format=datatype.mime_like,
+            )
+            # Add corresponding entry to row
+            entry = row.add_entry(
+                path=path,
+                datatype=datatype,
+                uri=self._get_resource_uri(xresource),
+            )
+        return entry
+
+    def create_field_entry(self, path: str, datatype: type, row: DataRow):
+        """
+        Creates a new resource entry to store a field
+
+        Parameters
+        ----------
+        path: str
+            the path to the entry relative to the row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row of the data entry
+        """
+        return row.add_entry(path, datatype, uri=None)
+
+    def get_checksums(self, uri: str):
+        """
+        Downloads the MD5 digests associated with the files in the file-set.
+        These are saved with the downloaded files in the cache and used to
+        check if the files have been updated on the server
+
+        Parameters
+        ----------
+        fileset: FileSet
+            the fileset to get the checksums for. Used to
+            determine the primary file within the resource and change the
+            corresponding key in the checksums dictionary to '.' to match
+            the way it is generated locally by Arcana.
+        """
+        if uri is None:
+            raise ArcanaUsageError(
+                "Can't retrieve checksums as URI has not been set for {}".format(uri)
+            )
+        with self.connection:
+            checksums = {
+                r["URI"]: r["digest"]
+                for r in self.connection.get_json(uri + "/files")["ResultSet"]["Result"]
+            }
+        # strip base URI to get relative paths of files within the resource
+        checksums = {
+            re.match(r".*/resources/\w+/files/(.*)$", u).group(1): c
+            for u, c in sorted(checksums.items())
+        }
+        return checksums
+
+    def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
+        """
+        Downloads the checksum digests associated with the files in the file-set.
+        These are saved with the downloaded files in the cache and used to
+        check if the files have been updated on the server
+
+        Parameters
+        ----------
+        uri: str
+            uri of the data item to download the checksums for
+        """
+        return fileset.hash_files(crypto=hashlib.md5, relative_to=fileset.fspath.parent)
+
+    ##################
+    # Helper methods #
+    ##################
+
     def get_xrow(self, row: DataRow):
         """
         Returns the XNAT session and cache dir corresponding to the provided
@@ -394,10 +441,6 @@ class Xnat(RemoteStore):
                     label=self.make_row_name(row), parent=xproject
                 )
             return xrow
-
-    ####################
-    # Helper Functions #
-    ####################
 
     def get_dicom_header(self, uri: str):
         def convert(val, code):
@@ -466,37 +509,6 @@ class Xnat(RemoteStore):
         dct = asdict(self, **kwargs)
         self._encrypt_credentials(dct)
         return dct
-
-    def create_test_dataset_data(
-        self, blueprint: TestXnatDatasetBlueprint, dataset_id: str, source_data: Path = None
-    ):
-        """
-        Creates dataset for each entry in dataset_structures
-        """
-
-        with self.connection:
-            self.connection.put(f"/data/archive/projects/{dataset_id}")
-
-        with self.connection:
-            xproject = self.connection.projects[dataset_id]
-            xclasses = self.connection.classes
-            for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
-                ids = dict(zip(Clinical.axes(), id_tple))
-                # Create subject
-                subject_label = "".join(f"{b}{ids[b]}" for b in Clinical.subject.span())
-                xsubject = xclasses.SubjectData(label=subject_label, parent=xproject)
-                # Create session
-                session_label = "".join(f"{b}{ids[b]}" for b in Clinical.session.span())
-                xsession = xclasses.MrSessionData(label=session_label, parent=xsubject)
-
-                for i, scan in enumerate(blueprint.scans, start=1):
-                    # Create scan
-                    self.create_test_fsobject(
-                        scan_id=i,
-                        blueprint=scan,
-                        parent=xsession,
-                        source_data=source_data,
-                    )
 
     def create_test_fsobject(
         self, scan_id: int, blueprint: ScanBlueprint, parent, source_data: Path = None
