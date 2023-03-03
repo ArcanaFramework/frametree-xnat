@@ -101,12 +101,20 @@ class Xnat(RemoteStore):
             else:
                 for xscan in xscans.values():
                     for xresource in xscan.resources.values():
+                        uri = self._get_resource_uri(xresource)
+                        if xresource.label in ("DICOM", "secondary"):
+                            datatype = DicomSet
+                            item_metadata = self.get_dicom_header(uri)
+                        else:
+                            datatype = FileSet
+                            item_metadata = {}
                         row.add_entry(
                             path=f"{xscan.type}/{xresource.label}",
-                            datatype=FileSet,
+                            datatype=datatype,
                             order=xscan.id,
                             quality=xscan.quality,
-                            uri=self._get_resource_uri(xresource),
+                            item_metadata=item_metadata,
+                            uri=uri,
                         )
             for field_id in xrow.fields:
                 row.add_entry(path=varname2path(field_id), datatype=Field, uri=None)
@@ -116,19 +124,12 @@ class Xnat(RemoteStore):
                     datatype = FileSet.from_mime(xresource.format)
                 except FormatRecognitionError:
                     datatype = FileSet
-                if xresource.label in ("DICOM", "secondary"):
-                    if datatype is FileSet:
-                        datatype = DicomSet
-                    item_metadata = self.get_dicom_header(uri)
-                else:
-                    item_metadata = {}
                 # "Derivative" entry paths are of the form "@dataset_name/column_name"
                 # escaped by `path2varname`. So we reverse the escape here
                 row.add_entry(
                     path="@" + varname2path(xresource.label),
                     datatype=datatype,
                     uri=uri,
-                    item_metadata=item_metadata,
                     checksums=self.get_checksums(uri),
                 )
 

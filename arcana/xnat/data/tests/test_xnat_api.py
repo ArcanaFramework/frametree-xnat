@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from tempfile import mkdtemp
 from functools import reduce
-from fileformats.core import FileSet
+import itertools
 from arcana.core.data.store import DataStore
 from arcana.core.data.space import Clinical
 from arcana.core.data.set import Dataset
@@ -35,7 +35,7 @@ else:
 # logger.setLevel(logging.INFO)
 
 
-def test_find_rows(xnat_dataset):
+def test_populate_tree(xnat_dataset):
     blueprint = xnat_dataset.__annotations__["blueprint"]
     for freq in Clinical:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
@@ -49,6 +49,15 @@ def test_find_rows(xnat_dataset):
         assert len(xnat_dataset.rows(freq)) == num_rows, (
             f"{freq} doesn't match {len(xnat_dataset.rows(freq))}" f" vs {num_rows}"
         )
+
+
+def test_populate_row(xnat_dataset):
+    blueprint = xnat_dataset.__annotations__["blueprint"]
+    for row in xnat_dataset.rows("session"):
+        expected_entries = sorted(itertools.chain(*(
+            [f"{scan.name}/{rsrc.name}" for rsrc in scan.resources]
+            for scan in blueprint.scans)))
+        assert sorted(e.path for e in row.entries) == expected_entries
 
 
 def test_get_items(xnat_dataset, caplog):
