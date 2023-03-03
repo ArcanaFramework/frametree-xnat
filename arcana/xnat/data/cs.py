@@ -9,7 +9,7 @@ from pathlib import Path
 import shutil
 import attrs
 from fileformats.core.base import FileSet
-from fileformats.generic import BaseDirectory
+from fileformats.generic import Directory
 from arcana.core.data import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
@@ -95,7 +95,7 @@ class XnatViaCS(Xnat):
         if entry.in_derivative_namespace:
             # entry is in input mount
             stem_path = self.entry_path(entry)
-            if datatype.is_subtype_of(BaseDirectory):
+            if datatype.is_subtype_of(Directory):
                 fspaths = [stem_path]
             else:
                 fspaths = list(stem_path.iterdir())
@@ -110,7 +110,7 @@ class XnatViaCS(Xnat):
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-            if datatype.is_subtype_of(BaseDirectory):
+            if datatype.is_subtype_of(Directory):
                 # Link files from resource dir into temp dir to avoid catalog XML
                 dir_path = self.cache_path(entry.uri)
                 try:
