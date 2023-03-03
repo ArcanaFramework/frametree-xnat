@@ -82,12 +82,8 @@ def test_get_items(xnat_dataset, caplog):
                         f"'{archive_dir}' has {archive_perms} permissions"
                     )
                     raise PermissionError(msg)
-                if item.is_dir:
-                    fspaths = item.fspath.iterdir()
-                else:
-                    fspaths = item.fspaths
                 item_files = sorted(
-                    p.name for p in fspaths if not p.name.endswith("catalog.xml")
+                    p.name for p in item.fspaths if not p.name.endswith("catalog.xml")
                 )
                 assert item_files == sorted(Path(f).name for f in files)
     method_str = "direct" if type(xnat_dataset.store) is XnatViaCS else "api"

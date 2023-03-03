@@ -95,10 +95,7 @@ class XnatViaCS(Xnat):
         if entry.in_derivative_namespace:
             # entry is in input mount
             stem_path = self.entry_path(entry)
-            if datatype.is_subtype_of(Directory):
-                fspaths = [stem_path]
-            else:
-                fspaths = list(stem_path.iterdir())
+            fspaths = list(stem_path.iterdir())
         else:
             path = re.match(
                 r"/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/"
@@ -110,20 +107,7 @@ class XnatViaCS(Xnat):
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-            if datatype.is_subtype_of(Directory):
-                # Link files from resource dir into temp dir to avoid catalog XML
-                dir_path = self.cache_path(entry.uri)
-                try:
-                    shutil.rmtree(dir_path)
-                except FileNotFoundError:
-                    pass
-                os.makedirs(dir_path, exist_ok=True)
-                for item in resource_path.iterdir():
-                    if not item.name.endswith("_catalog.xml"):
-                        os.symlink(item, dir_path / item.name)
-                fspaths = [dir_path]
-            else:
-                fspaths = list(resource_path.iterdir())
+            fspaths = list(resource_path.iterdir())
         return datatype(fspaths)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:

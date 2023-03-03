@@ -4,6 +4,7 @@ import typing as ty
 from glob import glob
 import tempfile
 import logging
+import hashlib
 import errno
 from itertools import product
 import json
@@ -129,7 +130,7 @@ class Xnat(RemoteStore):
                     checksums=self.get_checksums(uri),
                 )
 
-    def download_fileset(
+    def download_files(
         self, entry: DataEntry, tmp_download_dir: Path, target_path: Path
     ):
         with self.connection:
@@ -140,15 +141,13 @@ class Xnat(RemoteStore):
                     entry.uri + "/files", f, format="zip", verbose=True
                 )
             # Extract downloaded zip file
-            expanded_dir = op.join(tmp_download_dir, "expanded")
+            expanded_dir = tmp_download_dir / "expanded"
             try:
                 with ZipFile(zip_path) as zip_file:
                     zip_file.extractall(expanded_dir)
             except BadZipfile as e:
-                raise ArcanaError(
-                    "Could not unzip file '{}' ({})".format(zip_path, e)
-                ) from e
-            data_path = glob(expanded_dir + "/**/files", recursive=True)[0]
+                raise ArcanaError(f"Could not unzip file '{zip_path}' ({e})") from e
+            data_path = glob(str(expanded_dir) + "/**/files", recursive=True)[0]
             # Remove existing cache if present
             try:
                 shutil.rmtree(target_path)
@@ -157,7 +156,7 @@ class Xnat(RemoteStore):
                     raise e
             shutil.move(data_path, target_path)
 
-    def upload_fileset(self, cache_path: Path, entry: DataEntry):
+    def upload_files(self, cache_path: Path, entry: DataEntry):
         # Copy to cache
         xresource = self.connection.classes.Resource(
             uri=entry.uri, xnat_session=self.connection.session
@@ -276,6 +275,19 @@ class Xnat(RemoteStore):
             for u, c in sorted(checksums.items())
         }
         return checksums
+
+    def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
+        """
+        Downloads the checksum digests associated with the files in the file-set.
+        These are saved with the downloaded files in the cache and used to
+        check if the files have been updated on the server
+
+        Parameters
+        ----------
+        uri: str
+            uri of the data item to download the checksums for
+        """
+        return fileset.hash_files(crypto=hashlib.md5, relative_to=fileset.fspath.parent)    
 
     def save_dataset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
@@ -494,14 +506,14 @@ class Xnat(RemoteStore):
             xresource = xscan.create_resource(resource.name)
             # Create the dummy files
             for fname in resource.filenames:
-                fpath = super().create_test_fsobject(
+                super().create_test_fsobject(
                     fname,
                     tmp_dir,
                     source_data=source_data,
                     source_fallback=True,
                     escape_source_name=False,
                 )
-                xresource.upload(str(fpath), fpath.name)
+            xresource.upload_dir(tmp_dir)
 
     @classmethod
     def _get_resource_uri(cls, xresource):
