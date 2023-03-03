@@ -60,7 +60,7 @@ def test_populate_row(xnat_dataset):
         assert sorted(e.path for e in row.entries) == expected_entries
 
 
-def test_get_items(xnat_dataset, caplog):
+def test_get(xnat_dataset, caplog):
     blueprint = xnat_dataset.__annotations__["blueprint"]
     expected_files = {}
     for scan in blueprint.scans:
@@ -99,7 +99,7 @@ def test_get_items(xnat_dataset, caplog):
     assert f"{method_str} access" in caplog.text.lower()
 
 
-def test_put_items(mutable_dataset: Dataset, source_data: Path, caplog):
+def test_post(mutable_dataset: Dataset, source_data: Path, caplog):
     blueprint = mutable_dataset.__annotations__["blueprint"]
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
