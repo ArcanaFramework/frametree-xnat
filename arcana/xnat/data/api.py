@@ -122,6 +122,8 @@ class Xnat(RemoteStore):
                     item_metadata = self.get_dicom_header(uri)
                 else:
                     item_metadata = {}
+                # "Derivative" entry paths are of the form "@dataset_name/column_name"
+                # escaped by `path2varname`. So we reverse the escape here
                 row.add_entry(
                     path="@" + varname2path(xresource.label),
                     datatype=datatype,

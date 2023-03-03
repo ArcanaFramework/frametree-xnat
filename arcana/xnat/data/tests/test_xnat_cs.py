@@ -42,7 +42,7 @@ def run_spec(
             "registry": "a.docker.registry.io",
             "packages": {
                 "system": ["git", "vim"],
-                "pip": ["arcana-xnat", "arcana-testing"],
+                "pip": ["arcana", "arcana-xnat", "fileformats", "fileformats-medimage"],
             },
         }
         blueprint = TEST_XNAT_DATASET_BLUEPRINTS["concatenate_test"]
@@ -69,7 +69,7 @@ def run_spec(
             },
             "packages": {
                 "system": ["git", "vim"],
-                "pip": ["arcana-xnat", "arcana-bids"],
+                "pip": ["arcana", "arcana-xnat", "arcana-bids", "fileformats", "fileformats-medimage"],
             },
             "command": bids_command_spec,
             "authors": [
