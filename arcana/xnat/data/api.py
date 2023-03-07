@@ -362,6 +362,7 @@ class Xnat(RemoteStore):
                 )
                 xformat = None
             else:
+                parent = xrow
                 xformat = datatype.mime_like
                 resource_label = path2label(path)
             xresource = self.connection.classes.ResourceCatalog(

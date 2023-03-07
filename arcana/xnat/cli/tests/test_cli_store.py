@@ -10,6 +10,7 @@ def test_store_cli(xnat_repository, cli_runner, arcana_home, work_dir):
         [
             "test-xnat",
             "xnat:Xnat",
+            "--server",
             xnat_repository.server,
             "--user",
             xnat_repository.user,
@@ -34,6 +35,7 @@ def test_store_cli_remove(xnat_repository, cli_runner, arcana_home, work_dir):
         [
             new_store_name,
             "xnat:Xnat",
+            "--server",
             xnat_repository.server,
             "--user",
             xnat_repository.user,
@@ -60,6 +62,7 @@ def test_store_cli_rename(xnat_repository, cli_runner, arcana_home, work_dir):
         [
             old_store_name,
             "xnat:Xnat",
+            "--server",
             xnat_repository.server,
             "--user",
             xnat_repository.user,
@@ -78,13 +81,14 @@ def test_store_cli_rename(xnat_repository, cli_runner, arcana_home, work_dir):
     assert "y456 - arcana.xnat.data.api:Xnat" in result.output
 
 
-def test_store_cli_encrypt_credentials(xnat_repository, cli_runner, arcan_home, work_dir):
+def test_store_cli_encrypt_credentials(xnat_repository, cli_runner, arcana_home, work_dir):
     # Add new XNAT configuration
     result = cli_runner(
         add,
         [
             "test-xnat",
             "xnat:Xnat",
+            "--server",
             xnat_repository.server,
             "--user",
             xnat_repository.user,
