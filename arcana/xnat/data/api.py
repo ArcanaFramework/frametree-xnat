@@ -31,6 +31,7 @@ from arcana.core.exceptions import (
 )
 from arcana.core.utils.serialize import asdict
 from arcana.core.data.tree import DataTree
+from arcana.core.data.set import Dataset
 from arcana.core.data.entry import DataEntry
 from arcana.core.data import Clinical
 from .testing import ScanBlueprint
@@ -121,7 +122,7 @@ class Xnat(RemoteStore):
                             uri=uri,
                         )
             for field_id in xrow.fields:
-                row.add_entry(path=varname2path(field_id), datatype=Field, uri=None)
+                row.add_entry(path=label2path(field_id), datatype=Field, uri=None)
             for xresource in xrow.resources.values():
                 uri = self._get_resource_uri(xresource)
                 try:
@@ -129,9 +130,12 @@ class Xnat(RemoteStore):
                 except FormatRecognitionError:
                     datatype = FileSet
                 # "Derivative" entry paths are of the form "@dataset_name/column_name"
-                # escaped by `path2varname`. So we reverse the escape here
+                # escaped by `path2label`. So we reverse the escape here
+                path = label2path(xresource.label)
+                if "@" not in path:
+                    path += "@"
                 row.add_entry(
-                    path="@" + varname2path(xresource.label),
+                    path=path,
                     datatype=datatype,
                     uri=uri,
                     checksums=self.get_checksums(uri),
@@ -282,7 +286,9 @@ class Xnat(RemoteStore):
         xresource = self.connection.classes.Resource(
             uri=entry.uri, xnat_session=self.connection.session
         )
-        xresource.upload_dir(cache_path, overwrite=True)
+        # FIXME: work out which exception upload_dir raises when it can't overwrite
+        # and catch it here and add more descriptive error message
+        xresource.upload_dir(cache_path, overwrite=entry.is_derivative)
 
     def download_value(self, entry: DataEntry):
         """
@@ -300,8 +306,8 @@ class Xnat(RemoteStore):
         """
         with self.connection:
             xrow = self.get_xrow(entry.row)
-            val = xrow.fields[path2varname(entry.path)]
-            val = val.replace("&quot;", '"')
+            val = xrow.fields[path2label(entry.path)]
+            val = val.replace("&quot;", '"')  # Not sure this is necessary
         return val
 
     def upload_value(self, value, entry: DataEntry):
@@ -316,7 +322,13 @@ class Xnat(RemoteStore):
         """
         with self.connection:
             xrow = self.get_xrow(entry.row)
-            xrow.fields[path2varname(entry.path)] = str(value)
+            field_name = path2label(entry.path)
+            if not entry.is_derivative and field_name in xrow.fields:
+                field_name
+                raise ArcanaUsageError(
+                    f"Refusing to overwrite non-derivative field {entry.path} in {xrow}"
+                )
+            xrow.fields[field_name] = str(value)
 
     def create_fileset_entry(
         self, path: str, datatype: type, row: DataRow
@@ -333,20 +345,29 @@ class Xnat(RemoteStore):
         row : DataRow
             the row of the data entry
         """
-        if path.startswith("@"):
-            path = path[1:]
-        else:
-            raise NotImplementedError(
-                f"Posting fileset to non-derivative path '{path}' is not currently "
-                "supported"
-            )
         # Open XNAT connection session
         with self.connection:
-            # Create the new resource for the fileset entry
+            xrow = self.get_xrow(row)
+            if "@" not in path:
+                if row.frequency != Clinical.session:
+                    raise ArcanaUsageError(
+                        f"Cannot create file-set entry for '{path}': non-derivative "
+                        "file-sets (specified by entry paths that don't contain a "
+                        "'@' separator) are only allowed in MRSession nodes"
+                    )
+                scan_id, resource_label = path.split("/")
+                parent = self.connection.classes.MrScanData(
+                    id=scan_id,
+                    parent=xrow,
+                )
+                xformat = None
+            else:
+                xformat = datatype.mime_like
+                resource_label = path2label(path)
             xresource = self.connection.classes.ResourceCatalog(
-                parent=self.get_xrow(row),
-                label=path2varname(path),
-                format=datatype.mime_like,
+                parent=parent,
+                label=resource_label,
+                format=xformat,
             )
             # Add corresponding entry to row
             entry = row.add_entry(
@@ -479,9 +500,9 @@ class Xnat(RemoteStore):
     def _provenance_location(self, item, create_resource=False):
         xrow = self.get_xrow(item.row)
         if item.is_field:
-            fname = self.FIELD_PROV_PREFIX + path2varname(item)
+            fname = self.FIELD_PROV_PREFIX + path2label(item)
         else:
-            fname = path2varname(item) + ".json"
+            fname = path2label(item) + ".json"
         uri = f"{xrow.uri}/resources/{self.PROV_RESOURCE}/files/{fname}"
         cache_path = self.cache_path(uri)
         cache_path.parent.mkdir(parent=True, exist_ok=True)
@@ -534,3 +555,16 @@ class Xnat(RemoteStore):
     def _get_resource_uri(cls, xresource):
         """Replaces the resource ID with the resource label"""
         return re.match(r"(.*/)[^/]+", xresource.uri).group(1) + xresource.label
+
+
+def path2label(path: str):
+    if path.endswith("@"):
+        path += Dataset.EMPTY_NAME
+    return path2varname(path)
+
+
+def label2path(label: str):
+    path = varname2path(label)
+    if path.endswith(f"@{Dataset.EMPTY_NAME}"):
+        path = path.rstrip(Dataset.EMPTY_NAME)
+    return path
