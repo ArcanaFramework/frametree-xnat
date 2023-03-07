@@ -92,7 +92,7 @@ class XnatViaCS(Xnat):
             entry.row.frequency,
             entry.row.id,
         )
-        if entry.in_derivative_namespace:
+        if entry.is_derivative:
             # entry is in input mount
             stem_path = self.entry_path(entry)
             fspaths = list(stem_path.iterdir())
@@ -111,13 +111,16 @@ class XnatViaCS(Xnat):
         return datatype(fspaths)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
-        if not entry.in_derivative_namespace:
+        if not entry.is_derivative:
             super().put_fileset(fileset, entry)  # Fallback to API access
         entry_path = self.entry_path(entry)
         if entry_path.exists():
             shutil.rmtree(entry_path)
         cached = fileset.copy_to(
-            dest_dir=entry_path.parent, stem=entry_path.name, make_dirs=True
+            dest_dir=entry_path.parent,
+            stem=entry_path.name,
+            make_dirs=True,
+            overwrite=entry.is_derivative,
         )
         logger.info(
             "Put %s into %s:%s row via direct access to archive directory",
@@ -137,7 +140,7 @@ class XnatViaCS(Xnat):
 
     def entry_path(self, entry: DataEntry) -> Path:
         """Determine the paths that derivatives will be saved at"""
-        assert entry.in_derivative_namespace
+        assert entry.is_derivative
         return self.output_mount.joinpath(*entry.path.split("/")[1:])
 
     def get_input_mount(self, row: DataRow) -> Path:

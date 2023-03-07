@@ -5,12 +5,10 @@ from glob import glob
 import tempfile
 import logging
 import hashlib
-import errno
 from itertools import product
 import json
 import re
 from zipfile import ZipFile, BadZipfile
-import shutil
 import attrs
 import xnat.session
 from fileformats.core import FileSet, Field
@@ -256,8 +254,8 @@ class Xnat(RemoteStore):
     ################################
 
     def download_files(
-        self, entry: DataEntry, download_dir: Path, target_path: Path
-    ):
+        self, entry: DataEntry, download_dir: Path
+    ) -> Path:
         with self.connection:
             # Download resource to zip file
             zip_path = op.join(download_dir, "download.zip")
@@ -273,13 +271,7 @@ class Xnat(RemoteStore):
             except BadZipfile as e:
                 raise ArcanaError(f"Could not unzip file '{zip_path}' ({e})") from e
             data_path = glob(str(expanded_dir) + "/**/files", recursive=True)[0]
-            # Remove existing cache if present
-            try:
-                shutil.rmtree(target_path)
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise e
-            shutil.move(data_path, target_path)
+        return data_path
 
     def upload_files(self, cache_path: Path, entry: DataEntry):
         # Copy to cache
