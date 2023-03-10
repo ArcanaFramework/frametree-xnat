@@ -1,6 +1,15 @@
 import typing as ty
 import time
+from pathlib import Path
+import tempfile
+import attrs
 import xnat
+from arcana.core.data.space import DataSpace
+from arcana.core.data.row import DataRow
+from arcana.core.data import Clinical
+from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetBlueprint
+from ..data import Xnat
+
 from arcana.core.exceptions import ArcanaError
 
 
@@ -123,3 +132,43 @@ def install_and_launch_xnat_cs_command(
         status = wf_result["status"]
 
     return workflow_id, status, out_str
+
+
+@attrs.define
+class ScanBlueprint:
+
+    name: str
+    resources: ty.List[FileSetBlueprint]
+
+
+@attrs.define(slots=False, kw_only=True)
+class TestXnatDatasetBlueprint(TestDatasetBlueprint):
+
+    scans: ty.List[ScanBlueprint]
+
+    # Overwrite attributes in core blueprint class
+    hierarchy: list[DataSpace] = [Clinical.subject, Clinical.timepoint]
+    filesets: list[str] = None
+
+    def create_entries(self, row: DataRow, store: Xnat, source_data: Path = None):
+        xrow = store.get_xrow(row)
+        xclasses = xrow.xnat_session.classes
+        for scan_id, scan_blueprint in enumerate(self.scans, start=1):
+            xscan = xclasses.MrScanData(
+                id=scan_id, type=scan_blueprint.name, parent=xrow
+            )
+            for resource in scan_blueprint.resources:
+                tmp_dir = Path(tempfile.mkdtemp())
+                # Create the resource
+                xresource = xscan.create_resource(resource.name)
+                # Create the dummy files
+                for fname in resource.filenames:
+                    item = super().create_fsobject(
+                        fname,
+                        tmp_dir,
+                        source_data=source_data,
+                        source_fallback=True,
+                        escape_source_name=False,
+                    )
+                    item.copy_to(tmp_dir)
+                xresource.upload_dir(tmp_dir)

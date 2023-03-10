@@ -113,8 +113,9 @@ def test_post(mutable_dataset: Dataset, source_data: Path, caplog):
         fspaths = []
         for fname in deriv.filenames:
             fspaths.append(
-                DataStore.create_test_fsobject(
+                blueprint.create_fsobject(
                     fname=fname,
+                    store=mutable_dataset.store,
                     dpath=deriv_tmp_dir,
                     source_data=source_data,
                     source_fallback=True,

@@ -21,7 +21,6 @@ from arcana.core.utils.misc import (
 from arcana.core.data.store.remote import (
     RemoteStore,
 )
-from arcana.xnat.data.testing import TestXnatDatasetBlueprint
 from arcana.core.data.row import DataRow
 from arcana.core.exceptions import (
     ArcanaError,
@@ -32,17 +31,13 @@ from arcana.core.data.tree import DataTree
 from arcana.core.data.set import Dataset
 from arcana.core.data.entry import DataEntry
 from arcana.core.data import Clinical
-from .testing import ScanBlueprint
 
 
 logger = logging.getLogger("arcana")
 
-special_char_re = re.compile(r"[^a-zA-Z_0-9]")
 tag_parse_re = re.compile(r"\((\d+),(\d+)\)")
 
 RELEVANT_DICOM_TAG_TYPES = set(("UI", "CS", "DA", "TM", "SH", "LO", "PN", "ST", "AS"))
-
-# COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}
 
 
 @attrs.define
@@ -73,7 +68,7 @@ class Xnat(RemoteStore):
     DEFAULT_HIERARCHY = ["subject", "timepoint"]
 
     #############################
-    # DataStore abstractmethods #
+    # DataStore implementations #
     #############################
 
     def populate_tree(self, tree: DataTree):
@@ -218,36 +213,25 @@ class Xnat(RemoteStore):
             provenance = json.load(f)
         return provenance
 
-    def create_test_dataset_data(
-        self, blueprint: TestXnatDatasetBlueprint, dataset_id: str, source_data: Path = None
+    def create_data_tree(
+        self,
+        id: str,
+        leaves: list[tuple[str, ...]],
+        hierarchy: list[str] = None,
+        space: type = Clinical,
     ):
-        """
-        Creates dataset for each entry in dataset_structures
-        """
-
+        if hierarchy is None:
+            hierarchy = ["subject", "timepoint"]
         with self.connection:
-            self.connection.put(f"/data/archive/projects/{dataset_id}")
-
-        with self.connection:
-            xproject = self.connection.projects[dataset_id]
+            self.connection.put(f"/data/archive/projects/{id}")
+            xproject = self.connection.projects[id]
             xclasses = self.connection.classes
-            for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
-                ids = dict(zip(Clinical.axes(), id_tple))
+            for ids_tuple in leaves:
+                ids = dict(zip(hierarchy, ids_tuple))
                 # Create subject
-                subject_label = "".join(f"{b}{ids[b]}" for b in Clinical.subject.span())
-                xsubject = xclasses.SubjectData(label=subject_label, parent=xproject)
+                xsubject = xclasses.SubjectData(label=ids[space["subject"]], parent=xproject)
                 # Create session
-                session_label = "".join(f"{b}{ids[b]}" for b in Clinical.session.span())
-                xsession = xclasses.MrSessionData(label=session_label, parent=xsubject)
-
-                for i, scan in enumerate(blueprint.scans, start=1):
-                    # Create scan
-                    self.create_test_fsobject(
-                        scan_id=i,
-                        blueprint=scan,
-                        parent=xsession,
-                        source_data=source_data,
-                    )
+                xclasses.MrSessionData(label=ids[space["timepoint"]], parent=xsubject)
 
     ################################
     # RemoteStore-specific methods #
@@ -340,7 +324,7 @@ class Xnat(RemoteStore):
         # Open XNAT connection session
         with self.connection:
             xrow = self.get_xrow(row)
-            if "@" not in path:
+            if not DataEntry.path_is_derivative(path):
                 if row.frequency != Clinical.session:
                     raise ArcanaUsageError(
                         f"Cannot create file-set entry for '{path}': non-derivative "
@@ -523,26 +507,6 @@ class Xnat(RemoteStore):
         dct = asdict(self, **kwargs)
         self._encrypt_credentials(dct)
         return dct
-
-    def create_test_fsobject(
-        self, scan_id: int, blueprint: ScanBlueprint, parent, source_data: Path = None
-    ):
-        xclasses = parent.xnat_session.classes
-        xscan = xclasses.MrScanData(id=scan_id, type=blueprint.name, parent=parent)
-        for resource in blueprint.resources:
-            tmp_dir = Path(tempfile.mkdtemp())
-            # Create the resource
-            xresource = xscan.create_resource(resource.name)
-            # Create the dummy files
-            for fname in resource.filenames:
-                super().create_test_fsobject(
-                    fname,
-                    tmp_dir,
-                    source_data=source_data,
-                    source_fallback=True,
-                    escape_source_name=False,
-                )
-            xresource.upload_dir(tmp_dir)
 
     @classmethod
     def _get_resource_uri(cls, xresource):
