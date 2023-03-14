@@ -221,7 +221,7 @@ class Xnat(RemoteStore):
         space: type = Clinical,
     ):
         if hierarchy is None:
-            hierarchy = ["subject", "timepoint"]
+            hierarchy = ["subject", "session"]
         with self.connection:
             self.connection.put(f"/data/archive/projects/{id}")
             xproject = self.connection.projects[id]
@@ -229,9 +229,9 @@ class Xnat(RemoteStore):
             for ids_tuple in leaves:
                 ids = dict(zip(hierarchy, ids_tuple))
                 # Create subject
-                xsubject = xclasses.SubjectData(label=ids[space["subject"]], parent=xproject)
+                xsubject = xclasses.SubjectData(label=ids["subject"], parent=xproject)
                 # Create session
-                xclasses.MrSessionData(label=ids[space["timepoint"]], parent=xsubject)
+                xclasses.MrSessionData(label=ids["session"], parent=xsubject)
 
     ################################
     # RemoteStore-specific methods #
@@ -431,9 +431,9 @@ class Xnat(RemoteStore):
             if row.frequency == Clinical.dataset:
                 xrow = xproject
             elif row.frequency == Clinical.subject:
-                xrow = xproject.subjects[row.ids[Clinical.subject]]
+                xrow = xproject.subjects[row.frequency_id("subject")]
             elif row.frequency == Clinical.session:
-                xrow = xproject.experiments[row.ids[Clinical.session]]
+                xrow = xproject.experiments[row.frequency_id("session")]
             else:
                 xrow = self.connection.classes.SubjectData(
                     label=self.make_row_name(row), parent=xproject

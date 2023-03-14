@@ -4,27 +4,49 @@ from pathlib import Path
 import tempfile
 import attrs
 import xnat
+from arcana.core.data.space import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
-from arcana.core.data import Clinical
-from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetBlueprint
-from ..data import Xnat
-
+from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 from arcana.core.exceptions import ArcanaError
 
 
-# List of intermediatary states can pass through
-# before completing successfully
-INCOMPLETE_CS_STATES = (
-    "Pending",
-    "Running",
-    "_Queued",
-    "Staging",
-    "Finalizing",
-    "Created",
-    "_die",
-    "die",
-)
+@attrs.define
+class ScanBlueprint:
+
+    name: str
+    resources: ty.List[FileSetEntryBlueprint]
+
+
+@attrs.define(slots=False, kw_only=True)
+class TestXnatDatasetBlueprint(TestDatasetBlueprint):
+
+    scans: ty.List[ScanBlueprint]
+
+    # Overwrite attributes in core blueprint class
+    space: type = Clinical
+    hierarchy: list[DataSpace] = ["subject", "session"]
+    filesets: list[str] = None
+
+    def make_entries(self, row: DataRow, source_data: Path = None):
+        xrow = row.dataset.store.get_xrow(row)
+        xclasses = xrow.xnat_session.classes
+        for scan_id, scan_bp in enumerate(self.scans, start=1):
+            xscan = xclasses.MrScanData(
+                id=scan_id, type=scan_bp.name, parent=xrow
+            )
+            for resource_bp in scan_bp.resources:
+                tmp_dir = Path(tempfile.mkdtemp())
+                # Create the resource
+                xresource = xscan.create_resource(resource_bp.path)
+                # Create the dummy files
+                item = resource_bp.make_item(
+                    source_data=source_data,
+                    source_fallback=True,
+                    escape_source_name=False,
+                )
+                item.copy_to(tmp_dir)
+                xresource.upload_dir(tmp_dir)
 
 
 def install_and_launch_xnat_cs_command(
@@ -134,41 +156,15 @@ def install_and_launch_xnat_cs_command(
     return workflow_id, status, out_str
 
 
-@attrs.define
-class ScanBlueprint:
-
-    name: str
-    resources: ty.List[FileSetBlueprint]
-
-
-@attrs.define(slots=False, kw_only=True)
-class TestXnatDatasetBlueprint(TestDatasetBlueprint):
-
-    scans: ty.List[ScanBlueprint]
-
-    # Overwrite attributes in core blueprint class
-    hierarchy: list[DataSpace] = [Clinical.subject, Clinical.timepoint]
-    filesets: list[str] = None
-
-    def create_entries(self, row: DataRow, store: Xnat, source_data: Path = None):
-        xrow = store.get_xrow(row)
-        xclasses = xrow.xnat_session.classes
-        for scan_id, scan_blueprint in enumerate(self.scans, start=1):
-            xscan = xclasses.MrScanData(
-                id=scan_id, type=scan_blueprint.name, parent=xrow
-            )
-            for resource in scan_blueprint.resources:
-                tmp_dir = Path(tempfile.mkdtemp())
-                # Create the resource
-                xresource = xscan.create_resource(resource.name)
-                # Create the dummy files
-                for fname in resource.filenames:
-                    item = super().create_fsobject(
-                        fname,
-                        tmp_dir,
-                        source_data=source_data,
-                        source_fallback=True,
-                        escape_source_name=False,
-                    )
-                    item.copy_to(tmp_dir)
-                xresource.upload_dir(tmp_dir)
+# List of intermediatary states can pass through
+# before completing successfully
+INCOMPLETE_CS_STATES = (
+    "Pending",
+    "Running",
+    "_Queued",
+    "Staging",
+    "Finalizing",
+    "Created",
+    "_die",
+    "die",
+)

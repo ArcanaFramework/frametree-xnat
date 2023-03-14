@@ -54,23 +54,28 @@ def test_populate_tree(xnat_dataset):
 def test_populate_row(xnat_dataset):
     blueprint = xnat_dataset.__annotations__["blueprint"]
     for row in xnat_dataset.rows("session"):
-        expected_entries = sorted(itertools.chain(*(
-            [f"{scan.name}/{rsrc.name}" for rsrc in scan.resources]
-            for scan in blueprint.scans)))
+        expected_entries = sorted(
+            itertools.chain(
+                *(
+                    [f"{scan_bp.name}/{res_bp.path}" for res_bp in scan_bp.resources]
+                    for scan_bp in blueprint.scans
+                )
+            )
+        )
         assert sorted(e.path for e in row.entries) == expected_entries
 
 
 def test_get(xnat_dataset, caplog):
     blueprint = xnat_dataset.__annotations__["blueprint"]
     expected_files = {}
-    for scan in blueprint.scans:
-        for resource in scan.resources:
-            if resource.datatype is not None:
-                source_name = scan.name + resource.name
+    for scan_bp in blueprint.scans:
+        for resource_bp in scan_bp.resources:
+            if resource_bp.datatype is not None:
+                source_name = scan_bp.name + resource_bp.path
                 xnat_dataset.add_source(
-                    source_name, path=scan.name, datatype=resource.datatype
+                    source_name, path=scan_bp.name, datatype=resource_bp.datatype
                 )
-                expected_files[source_name] = set(resource.filenames)
+                expected_files[source_name] = set(resource_bp.filenames)
     with caplog.at_level(logging.INFO, logger="arcana"):
         for row in xnat_dataset.rows(Clinical.session):
             for source_name, files in expected_files.items():
@@ -102,47 +107,39 @@ def test_get(xnat_dataset, caplog):
 def test_post(mutable_dataset: Dataset, source_data: Path, caplog):
     blueprint = mutable_dataset.__annotations__["blueprint"]
     all_checksums = {}
-    tmp_dir = Path(mkdtemp())
-    for deriv in blueprint.derivatives:
+    for deriv_bp in blueprint.derivatives:
         mutable_dataset.add_sink(
-            name=deriv.name, datatype=deriv.datatype, row_frequency=deriv.row_frequency
+            name=deriv_bp.path,
+            datatype=deriv_bp.datatype,
+            row_frequency=deriv_bp.row_frequency,
         )
-        deriv_tmp_dir = tmp_dir / deriv.name
         # Create test files, calculate checksums and recorded expected paths
         # for inserted files
-        fspaths = []
-        for fname in deriv.filenames:
-            fspaths.append(
-                blueprint.create_fsobject(
-                    fname=fname,
-                    store=mutable_dataset.store,
-                    dpath=deriv_tmp_dir,
-                    source_data=source_data,
-                    source_fallback=True,
-                )
-            )
-
+        item = deriv_bp.make_item(
+            source_data=source_data,
+            source_fallback=True,
+        )
         # if len(fspaths) == 1 and fspaths[0].is_dir():
         #     relative_to = fspaths[0]
         # else:
         #     relative_to = deriv_tmp_dir
-        all_checksums[deriv.name] = deriv.datatype(fspaths).hash_files()
+        all_checksums[deriv_bp.path] = item.hash_files()
         # Insert into first row of that row_frequency in xnat_dataset
-        row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
+        row = next(iter(mutable_dataset.rows(deriv_bp.row_frequency)))
         with caplog.at_level(logging.INFO, logger="arcana"):
-            row[deriv.name] = fspaths
+            row[deriv_bp.path] = item
         method_str = "direct" if type(mutable_dataset.store) is XnatViaCS else "api"
         assert f"{method_str} access" in caplog.text.lower()
 
     access_method = "cs" if type(mutable_dataset.store) is XnatViaCS else "api"
 
     def check_inserted():
-        for deriv in blueprint.derivatives:
-            row = next(iter(mutable_dataset.rows(deriv.row_frequency)))
-            cell = row.cell(deriv.name, allow_empty=False)
+        for deriv_bp in blueprint.derivatives:
+            row = next(iter(mutable_dataset.rows(deriv_bp.row_frequency)))
+            cell = row.cell(deriv_bp.path, allow_empty=False)
             item = cell.item
-            assert isinstance(item, deriv.datatype)
-            assert item.hash_files() == all_checksums[deriv.name]
+            assert isinstance(item, deriv_bp.datatype)
+            assert item.hash_files() == all_checksums[deriv_bp.path]
 
     if access_method == "api":
         check_inserted()  # Check cache
