@@ -217,21 +217,18 @@ class Xnat(RemoteStore):
         self,
         id: str,
         leaves: list[tuple[str, ...]],
-        hierarchy: list[str] = None,
-        space: type = Clinical,
+        **kwargs
     ):
-        if hierarchy is None:
-            hierarchy = ["subject", "session"]
         with self.connection:
             self.connection.put(f"/data/archive/projects/{id}")
             xproject = self.connection.projects[id]
             xclasses = self.connection.classes
             for ids_tuple in leaves:
-                ids = dict(zip(hierarchy, ids_tuple))
+                subject_id, session_id = ids_tuple
                 # Create subject
-                xsubject = xclasses.SubjectData(label=ids["subject"], parent=xproject)
+                xsubject = xclasses.SubjectData(label=subject_id, parent=xproject)
                 # Create session
-                xclasses.MrSessionData(label=ids["session"], parent=xsubject)
+                xclasses.MrSessionData(label=session_id, parent=xsubject)
 
     ################################
     # RemoteStore-specific methods #

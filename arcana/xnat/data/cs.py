@@ -9,7 +9,6 @@ from pathlib import Path
 import shutil
 import attrs
 from fileformats.core.base import FileSet
-from fileformats.generic import Directory
 from arcana.core.data import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
@@ -94,7 +93,7 @@ class XnatViaCS(Xnat):
         )
         if entry.is_derivative:
             # entry is in input mount
-            stem_path = self.entry_path(entry)
+            stem_path = self.entry_fspath(entry)
             fspaths = list(stem_path.iterdir())
         else:
             path = re.match(
@@ -113,12 +112,16 @@ class XnatViaCS(Xnat):
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         if not entry.is_derivative:
             super().put_fileset(fileset, entry)  # Fallback to API access
-        entry_path = self.entry_path(entry)
-        if entry_path.exists():
-            shutil.rmtree(entry_path)
+        entry_fspath = self.entry_fspath(entry)
+        if entry_fspath.exists():
+            for fspath in entry_fspath.iterdir():
+                if fspath.is_dir():
+                    shutil.rmtree(fspath)
+                else:
+                    fspath.unlink()
         cached = fileset.copy_to(
-            dest_dir=entry_path.parent,
-            stem=entry_path.name,
+            dest_dir=entry_fspath.parent,
+            stem=entry_fspath.name,
             make_dirs=True,
             overwrite=entry.is_derivative,
         )
@@ -138,7 +141,7 @@ class XnatViaCS(Xnat):
         self.put_fileset(fileset, entry)
         return entry
 
-    def entry_path(self, entry: DataEntry) -> Path:
+    def entry_fspath(self, entry: DataEntry) -> Path:
         """Determine the paths that derivatives will be saved at"""
         assert entry.is_derivative
         return self.output_mount.joinpath(*entry.path.split("/")[1:])
