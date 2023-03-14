@@ -122,13 +122,8 @@ class Xnat(RemoteStore):
                     datatype = FileSet.from_mime(xresource.format)
                 except FormatRecognitionError:
                     datatype = FileSet
-                # "Derivative" entry paths are of the form "@dataset_name/column_name"
-                # escaped by `path2label`. So we reverse the escape here
-                path = label2path(xresource.label)
-                if "@" not in path:
-                    path += "@"
                 row.add_entry(
-                    path=path,
+                    path=label2path(xresource.label),
                     datatype=datatype,
                     uri=uri,
                     checksums=self.get_checksums(uri),
@@ -512,13 +507,11 @@ class Xnat(RemoteStore):
 
 
 def path2label(path: str):
-    if path.endswith("@"):
-        path += Dataset.EMPTY_NAME
-    return path2varname(path)
+    return path2varname(path.rstrip("@"))
 
 
 def label2path(label: str):
     path = varname2path(label)
-    if path.endswith(f"@{Dataset.EMPTY_NAME}"):
-        path = path.rstrip(Dataset.EMPTY_NAME)
+    if "@" not in path:
+        path += "@"
     return path

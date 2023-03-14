@@ -14,7 +14,7 @@ from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
 from arcana.core.exceptions import ArcanaNoDirectXnatMountException
-from .api import Xnat
+from .api import Xnat, path2label
 
 logger = logging.getLogger("arcana")
 
@@ -114,16 +114,11 @@ class XnatViaCS(Xnat):
             super().put_fileset(fileset, entry)  # Fallback to API access
         entry_fspath = self.entry_fspath(entry)
         if entry_fspath.exists():
-            for fspath in entry_fspath.iterdir():
-                if fspath.is_dir():
-                    shutil.rmtree(fspath)
-                else:
-                    fspath.unlink()
+            shutil.rmtree(entry_fspath)
         cached = fileset.copy_to(
-            dest_dir=entry_fspath.parent,
-            stem=entry_fspath.name,
+            dest_dir=entry_fspath,
             make_dirs=True,
-            overwrite=entry.is_derivative,
+            trim=False,
         )
         logger.info(
             "Put %s into %s:%s row via direct access to archive directory",
@@ -144,7 +139,10 @@ class XnatViaCS(Xnat):
     def entry_fspath(self, entry: DataEntry) -> Path:
         """Determine the paths that derivatives will be saved at"""
         assert entry.is_derivative
-        return self.output_mount.joinpath(*entry.path.split("/")[1:])
+        path_parts = entry.path.split("/")
+        # Escape resource name
+        path_parts[-1] = path2label(path_parts[-1])
+        return self.output_mount.joinpath(*path_parts)
 
     def get_input_mount(self, row: DataRow) -> Path:
         if self.row_frequency == row.frequency:
