@@ -112,14 +112,12 @@ class XnatViaCS(Xnat):
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         if not entry.is_derivative:
             super().put_fileset(fileset, entry)  # Fallback to API access
-        entry_fspath = self.entry_fspath(entry)
-        if entry_fspath.exists():
-            shutil.rmtree(entry_fspath)
         cached = fileset.copy_to(
-            dest_dir=entry_fspath,
+            dest_dir=self.output_mount,
             make_dirs=True,
             stem=entry.path.split("/")[-1].split("@")[0],
             trim=False,
+            overwrite=True,
         )
         logger.info(
             "Put %s into %s:%s row via direct access to archive directory",
