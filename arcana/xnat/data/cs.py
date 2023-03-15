@@ -118,6 +118,7 @@ class XnatViaCS(Xnat):
         cached = fileset.copy_to(
             dest_dir=entry_fspath,
             make_dirs=True,
+            stem=entry.path.split("/")[-1].split("@")[0],
             trim=False,
         )
         logger.info(

@@ -208,12 +208,7 @@ class Xnat(RemoteStore):
             provenance = json.load(f)
         return provenance
 
-    def create_data_tree(
-        self,
-        id: str,
-        leaves: list[tuple[str, ...]],
-        **kwargs
-    ):
+    def create_data_tree(self, id: str, leaves: list[tuple[str, ...]], **kwargs):
         with self.connection:
             self.connection.put(f"/data/archive/projects/{id}")
             xproject = self.connection.projects[id]
@@ -229,9 +224,7 @@ class Xnat(RemoteStore):
     # RemoteStore-specific methods #
     ################################
 
-    def download_files(
-        self, entry: DataEntry, download_dir: Path
-    ) -> Path:
+    def download_files(self, entry: DataEntry, download_dir: Path) -> Path:
         with self.connection:
             # Download resource to zip file
             zip_path = op.join(download_dir, "download.zip")
@@ -258,7 +251,9 @@ class Xnat(RemoteStore):
         # and catch it here and add more descriptive error message
         xresource.upload_dir(cache_path, overwrite=entry.is_derivative)
 
-    def download_value(self, entry: DataEntry):
+    def download_value(
+        self, entry: DataEntry
+    ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
         """
         Retrieves a fields value
 
