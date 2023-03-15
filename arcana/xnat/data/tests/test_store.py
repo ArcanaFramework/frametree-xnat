@@ -5,13 +5,15 @@ import operator as op
 import shutil
 import logging
 from pathlib import Path
-from tempfile import mkdtemp
 from functools import reduce
 import itertools
-from arcana.core.data.store import DataStore
+import pytest
+from fileformats.generic import File
+from fileformats.field import Text as TextField
 from arcana.core.data.space import Clinical
 from arcana.core.data.set import Dataset
 from arcana.xnat.data import XnatViaCS
+from arcana.core.utils.serialize import asdict
 
 if sys.platform == "win32":
 
@@ -146,3 +148,33 @@ def test_post(mutable_dataset: Dataset, source_data: Path, caplog):
         # Check downloaded by deleting the cache dir
         shutil.rmtree(mutable_dataset.store.cache_dir / "projects" / mutable_dataset.id)
         check_inserted()
+
+
+def test_dataset_definition_roundtrip(simple_dataset: Dataset):
+    definition = asdict(simple_dataset, omit=["store", "name"])
+    definition["store-version"] = "1.0.0"
+
+    data_store = simple_dataset.store
+
+    with data_store.connection:
+        data_store.save_dataset_definition(
+            dataset_id=simple_dataset.id, definition=definition, name="test_dataset"
+        )
+        reloaded_definition = data_store.load_dataset_definition(
+            dataset_id=simple_dataset.id, name="test_dataset"
+        )
+    assert definition == reloaded_definition
+
+
+# We use __file__ here as we just need any old file and can guarantee it exists
+@pytest.mark.parametrize("datatype,value", [(File, __file__), (TextField, "value")])
+def test_provenance_roundtrip(datatype: type, value: str, simple_dataset: Dataset):
+    provenance = {"a": 1, "b": [1, 2, 3], "c": {"x": True, "y": "foo", "z": "bar"}}
+    data_store = simple_dataset.store
+
+    with data_store.connection:
+        entry = data_store.create_entry("provtest@", datatype, simple_dataset.root)
+        data_store.put(datatype(value), entry)  # Create the entry first
+        data_store.put_provenance(provenance, entry)  # Save the provenance
+        reloaded_provenance = data_store.get_provenance(entry)  # reload the provenance
+        assert provenance == reloaded_provenance

@@ -5,7 +5,6 @@ from glob import glob
 import tempfile
 import logging
 import hashlib
-from itertools import product
 import json
 import re
 from zipfile import ZipFile, BadZipfile
@@ -28,7 +27,6 @@ from arcana.core.exceptions import (
 )
 from arcana.core.utils.serialize import asdict
 from arcana.core.data.tree import DataTree
-from arcana.core.data.set import Dataset
 from arcana.core.data.entry import DataEntry
 from arcana.core.data import Clinical
 
@@ -66,6 +64,7 @@ class Xnat(RemoteStore):
     depth = 2
     DEFAULT_SPACE = Clinical
     DEFAULT_HIERARCHY = ["subject", "timepoint"]
+    PROV_RESOURCE = "PROVENANCE"
 
     #############################
     # DataStore implementations #
@@ -192,19 +191,20 @@ class Xnat(RemoteStore):
     def disconnect(self, session: xnat.XNATSession):
         session.disconnect()
 
-    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
-        xresource, _, cache_path = self._provenance_location(item, create_resource=True)
+    def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
+        xresource, _, cache_path = self._provenance_location(entry, create_resource=True)
         with open(cache_path, "w") as f:
             json.dump(provenance, f, indent="  ")
-        xresource.upload(cache_path, cache_path.name)
+        xresource.upload(str(cache_path), cache_path.name)
 
-    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
+    def get_provenance(self, entry: DataEntry) -> ty.Dict[str, ty.Any]:
         try:
-            xresource, uri, cache_path = self._provenance_location(item)
+            xresource, uri, cache_path = self._provenance_location(entry)
         except KeyError:
             return {}  # Provenance doesn't exist on server
-        with open(cache_path, "w") as f:
+        with open(cache_path, "wb") as f:
             xresource.xnat_session.download_stream(uri, f)
+        with open(cache_path) as f:
             provenance = json.load(f)
         return provenance
 
@@ -461,21 +461,18 @@ class Xnat(RemoteStore):
             id_str = "_" + str(row.id)
         return f"__{row.frequency}{id_str}__"
 
-    def _provenance_location(self, item, create_resource=False):
-        xrow = self.get_xrow(item.row)
-        if item.is_field:
-            fname = self.FIELD_PROV_PREFIX + path2label(item)
-        else:
-            fname = path2label(item) + ".json"
+    def _provenance_location(self, entry: DataEntry, create_resource: bool = False):
+        xrow = self.get_xrow(entry.row)
+        fname = path2label(entry.path) + ".json"
         uri = f"{xrow.uri}/resources/{self.PROV_RESOURCE}/files/{fname}"
         cache_path = self.cache_path(uri)
-        cache_path.parent.mkdir(parent=True, exist_ok=True)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             xresource = xrow.resources[self.PROV_RESOURCE]
         except KeyError:
             if create_resource:
                 xresource = self.connection.classes.ResourceCatalog(
-                    parent=xrow, label=self.PROV_RESOURCE, datatype="PROVENANCE"
+                    parent=xrow, label=self.PROV_RESOURCE, format="PROVENANCE"
                 )
             else:
                 raise
