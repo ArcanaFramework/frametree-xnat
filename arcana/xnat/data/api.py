@@ -72,13 +72,12 @@ class Xnat(RemoteStore):
 
     def populate_tree(self, tree: DataTree):
         """
-        Find all filesets, fields and provenance provenances within an XNAT
-        project and create data tree within dataset
+        Populates the nodes of the data tree with those found in the dataset
 
         Parameters
         ----------
-        dataset : Dataset
-            The dataset to construct
+        tree : DataTree
+            The tree to populate with nodes via the ``DataTree.add_leaf`` method
         """
         with self.connection:
             # Get all "leaf" nodes, i.e. XNAT imaging session objects
@@ -86,8 +85,15 @@ class Xnat(RemoteStore):
                 tree.add_leaf([exp.subject.label, exp.label])
 
     def populate_row(self, row: DataRow):
-        """Find all resource objects at scan and imaging session/subject/project level
-        and create corresponding file-set entries, and list all fields"""
+        """
+        Populate a row with all data entries found in the corresponding node in the data
+        store (e.g. files within a directory, scans within an XNAT session).
+
+        Parameters
+        ----------
+        row : DataRow
+            The row to populate with entries using the ``DataRow.add_entry`` method
+        """
         with self.connection:
             xrow = self.get_xrow(row)
             # Add scans, fields and resources to data row
@@ -131,6 +137,20 @@ class Xnat(RemoteStore):
     def save_dataset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
+        """Save definition of dataset within the store
+
+        Parameters
+        ----------
+        dataset_id: str
+            The ID/path of the dataset within the store
+        definition: dict[str, Any]
+            A dictionary containing the dct Dataset to be saved. The
+            dictionary is in a format ready to be dumped to file as JSON or
+            YAML.
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project
+        """
         with self.connection:
             xproject = self.connection.projects[dataset_id]
             try:
@@ -146,6 +166,21 @@ class Xnat(RemoteStore):
             xresource.upload(str(definition_file), name + ".json", overwrite=True)
 
     def load_dataset_definition(self, dataset_id: str, name: str) -> dict[str, ty.Any]:
+        """Load definition of a dataset saved within the store
+
+        Parameters
+        ----------
+        dataset_id: str
+            The ID (e.g. file-system path, XNAT project ID) of the project
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project
+
+        Returns
+        -------
+        definition: dict[str, Any]
+            A dct Dataset object that was saved in the data store
+        """
         with self.connection:
             xproject = self.connection.projects[dataset_id]
             try:
@@ -173,9 +208,11 @@ class Xnat(RemoteStore):
 
     def connect(self) -> xnat.XNATSession:
         """
-        Parameters
+        The XnatPy connection to the data store
+
+        Returns
         ----------
-        prev_login : xnat.XNATSession
+        session : xnat.XNATSession
             An XNAT login that has been opened in the code that calls
             the method that calls login. It is wrapped in a
             NoExitWrapper so the returned connection can be used
@@ -189,15 +226,47 @@ class Xnat(RemoteStore):
         return xnat.connect(server=self.server, **sess_kwargs)
 
     def disconnect(self, session: xnat.XNATSession):
+        """
+        Close the XnatPy session object
+
+        Parameters
+        ----------
+        session : xnat.XNATSession
+            the XnatPy session object returned by `connect` to be closed
+        """
         session.disconnect()
 
     def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
-        xresource, _, cache_path = self._provenance_location(entry, create_resource=True)
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        entry: DataEntry
+            The item to store the provenance data for
+        provenance: dict[str, Any]
+            The provenance data to store
+        """
+        xresource, _, cache_path = self._provenance_location(
+            entry, create_resource=True
+        )
         with open(cache_path, "w") as f:
             json.dump(provenance, f, indent="  ")
         xresource.upload(str(cache_path), cache_path.name)
 
     def get_provenance(self, entry: DataEntry) -> ty.Dict[str, ty.Any]:
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        entry: DataEntry
+            The item to store the provenance data for
+
+        Returns
+        -------
+        provenance: dict[str, Any] or None
+            The provenance data stored in the repository for the data item.
+            None if no provenance data has been stored
+        """
         try:
             xresource, uri, cache_path = self._provenance_location(entry)
         except KeyError:
@@ -209,6 +278,21 @@ class Xnat(RemoteStore):
         return provenance
 
     def create_data_tree(self, id: str, leaves: list[tuple[str, ...]], **kwargs):
+        """Creates a new empty dataset within in the store. Used in test routines and
+        importing/exporting datasets between stores
+
+        Parameters
+        ----------
+        id : str
+            ID for the newly created dataset
+        leaves : list[tuple[str, ...]]
+                        list of IDs for each leaf node to be added to the dataset. The IDs for each
+            leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
+            for a hierarchy of [subject, timepoint] ->
+            [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
+        **kwargs
+            kwargs are ignored
+        """
         with self.connection:
             self.connection.put(f"/data/archive/projects/{id}")
             xproject = self.connection.projects[id]
@@ -225,6 +309,25 @@ class Xnat(RemoteStore):
     ################################
 
     def download_files(self, entry: DataEntry, download_dir: Path) -> Path:
+        """Download files associated with the given entry in the data store, using
+        `download_dir` as temporary storage location (will be monitored by downloads
+        in sibling processes to detect if download activity has stalled), return the
+        path to a directory containing only the downloaded files
+
+        Parameters
+        ----------
+        entry : DataEntry
+            entry in the data store to download the files/directories from
+        download_dir : Path
+            temporary storage location for the downloaded files and/or compressed
+            archives. Monitored by sibling processes to detect if download activity
+            has stalled.
+
+        Returns
+        -------
+        output_dir : Path
+            a directory containing the downloaded files/directories and nothing else
+        """
         with self.connection:
             # Download resource to zip file
             zip_path = op.join(download_dir, "download.zip")
@@ -243,6 +346,16 @@ class Xnat(RemoteStore):
         return data_path
 
     def upload_files(self, cache_path: Path, entry: DataEntry):
+        """Upload all files contained within `input_dir` to the specified entry in the
+        data store
+
+        Parameters
+        ----------
+        input_dir : Path
+            directory containing the files/directories to be uploaded
+        entry : DataEntry
+            the entry in the data store to upload the files to
+        """
         # Copy to cache
         xresource = self.connection.classes.Resource(
             uri=entry.uri, xnat_session=self.connection.session
@@ -255,17 +368,17 @@ class Xnat(RemoteStore):
         self, entry: DataEntry
     ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
         """
-        Retrieves a fields value
+        Extract and return the value of the field from the store
 
         Parameters
         ----------
-        field : Field
-            The field to retrieve
+        entry : DataEntry
+            The data entry to retrieve the value from
 
         Returns
         -------
-        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
-            The value of the field
+        value : float or int or str or list[float] or list[int] or list[str]
+            The value of the Field
         """
         with self.connection:
             xrow = self.get_xrow(entry.row)
@@ -273,15 +386,19 @@ class Xnat(RemoteStore):
             val = val.replace("&quot;", '"')  # Not sure this is necessary
         return val
 
-    def upload_value(self, value, entry: DataEntry):
+    def upload_value(
+        self,
+        value: ty.Union[float, int, str, list[float], list[int], list[str]],
+        entry: DataEntry,
+    ):
         """Store the value for a field in the XNAT repository
 
         Parameters
         ----------
-        field : Field
-            the field to store the value for
-        value : str or float or int or bool
-            the value to store
+        value : float or int or str or list[float] or list[int] or list[str]
+            the value to store in the entry
+        entry : DataEntry
+            the entry to store the value in
         """
         with self.connection:
             xrow = self.get_xrow(entry.row)
