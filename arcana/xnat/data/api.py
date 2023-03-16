@@ -63,7 +63,7 @@ class Xnat(RemoteStore):
 
     depth = 2
     DEFAULT_SPACE = Clinical
-    DEFAULT_HIERARCHY = ["subject", "timepoint"]
+    DEFAULT_HIERARCHY = ["subject", "session"]
     PROV_RESOURCE = "PROVENANCE"
 
     #############################
