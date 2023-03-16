@@ -122,6 +122,8 @@ class Xnat(RemoteStore):
             for field_id in xrow.fields:
                 row.add_entry(path=label2path(field_id), datatype=Field, uri=None)
             for xresource in xrow.resources.values():
+                if xresource.label == self.METADATA_RESOURCE:
+                    continue
                 uri = self._get_resource_uri(xresource)
                 try:
                     datatype = FileSet.from_mime(xresource.format)
@@ -194,7 +196,7 @@ class Xnat(RemoteStore):
                     download_dir
                     / dataset_id
                     / "resources"
-                    / "__arcana__"
+                    / self.METADATA_RESOURCE
                     / "files"
                     / (name + ".json")
                 )
