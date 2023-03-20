@@ -1,6 +1,7 @@
 import typing as ty
 import time
 from pathlib import Path
+import logging
 import tempfile
 import attrs
 import xnat
@@ -9,6 +10,9 @@ from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
 from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 from arcana.core.exceptions import ArcanaError
+
+
+logger = logging.getLogger("arcana")
 
 
 @attrs.define
@@ -29,6 +33,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
     filesets: list[str] = None
 
     def make_entries(self, row: DataRow, source_data: Path = None):
+        logger.debug("Making entries in %s row: %s", row, self.scans)
         xrow = row.dataset.store.get_xrow(row)
         xclasses = xrow.xnat_session.classes
         for scan_id, scan_bp in enumerate(self.scans, start=1):
