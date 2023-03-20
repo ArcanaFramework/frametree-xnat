@@ -428,6 +428,7 @@ class Xnat(RemoteStore):
             the row of the data entry
         """
         # Open XNAT connection session
+        logger.debug("creating %s entry at %s in %s", datatype, path, row)
         with self.connection:
             xrow = self.get_xrow(row)
             if not DataEntry.path_is_derivative(path):
@@ -452,6 +453,7 @@ class Xnat(RemoteStore):
                 label=resource_label,
                 format=xformat,
             )
+            logger.debug("Created resource %s", xresource)
             # Add corresponding entry to row
             entry = row.add_entry(
                 path=path,
