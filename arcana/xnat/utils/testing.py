@@ -1,21 +1,57 @@
 import typing as ty
 import time
+from pathlib import Path
+import logging
+import tempfile
+import attrs
 import xnat
+from arcana.core.data.space import Clinical
+from arcana.core.data.space import DataSpace
+from arcana.core.data.row import DataRow
+from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 from arcana.core.exceptions import ArcanaError
 
 
-# List of intermediatary states can pass through
-# before completing successfully
-INCOMPLETE_CS_STATES = (
-    "Pending",
-    "Running",
-    "_Queued",
-    "Staging",
-    "Finalizing",
-    "Created",
-    "_die",
-    "die",
-)
+logger = logging.getLogger("arcana")
+
+
+@attrs.define
+class ScanBlueprint:
+
+    name: str
+    resources: ty.List[FileSetEntryBlueprint]
+
+
+@attrs.define(slots=False, kw_only=True)
+class TestXnatDatasetBlueprint(TestDatasetBlueprint):
+
+    scans: ty.List[ScanBlueprint]
+
+    # Overwrite attributes in core blueprint class
+    space: type = Clinical
+    hierarchy: list[DataSpace] = ["subject", "session"]
+    filesets: list[str] = None
+
+    def make_entries(self, row: DataRow, source_data: Path = None):
+        logger.debug("Making entries in %s row: %s", row, self.scans)
+        xrow = row.dataset.store.get_xrow(row)
+        xclasses = xrow.xnat_session.classes
+        for scan_id, scan_bp in enumerate(self.scans, start=1):
+            xscan = xclasses.MrScanData(
+                id=scan_id, type=scan_bp.name, parent=xrow
+            )
+            for resource_bp in scan_bp.resources:
+                tmp_dir = Path(tempfile.mkdtemp())
+                # Create the resource
+                xresource = xscan.create_resource(resource_bp.path)
+                # Create the dummy files
+                item = resource_bp.make_item(
+                    source_data=source_data,
+                    source_fallback=True,
+                    escape_source_name=False,
+                )
+                item.copy_to(tmp_dir)
+                xresource.upload_dir(tmp_dir)
 
 
 def install_and_launch_xnat_cs_command(
@@ -123,3 +159,17 @@ def install_and_launch_xnat_cs_command(
         status = wf_result["status"]
 
     return workflow_id, status, out_str
+
+
+# List of intermediatary states can pass through
+# before completing successfully
+INCOMPLETE_CS_STATES = (
+    "Pending",
+    "Running",
+    "_Queued",
+    "Staging",
+    "Finalizing",
+    "Created",
+    "_die",
+    "die",
+)
