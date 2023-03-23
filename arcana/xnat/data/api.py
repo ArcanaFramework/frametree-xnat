@@ -7,6 +7,7 @@ import logging
 import hashlib
 import json
 import re
+from operator import attrgetter
 from zipfile import ZipFile, BadZipfile
 import attrs
 import xnat.session
@@ -64,6 +65,7 @@ class Xnat(RemoteStore):
     depth = 2
     DEFAULT_SPACE = Clinical
     DEFAULT_HIERARCHY = ["subject", "session"]
+    DEFAULT_ID_PATTERNS = (("timepoint", "session:order"))
     PROV_RESOURCE = "PROVENANCE"
 
     #############################
@@ -81,8 +83,26 @@ class Xnat(RemoteStore):
         """
         with self.connection:
             # Get all "leaf" nodes, i.e. XNAT imaging session objects
-            for exp in self.connection.projects[tree.dataset_id].experiments.values():
-                tree.add_leaf([exp.subject.label, exp.label])
+            xproject = self.connection.projects[tree.dataset_id]
+            for xsubject in xproject.subjects.values():
+                xsessions = sorted(
+                    xsubject.experiments.values(), key=attrgetter("date")
+                )
+                order = 1
+                for xsess in xsessions:
+                    metadata = {
+                        "session": {
+                            "date": xsess.date.strftime("%Y%m%d"),
+                            "visit_id": xsess.visit_id,
+                            "age": xsess.age,
+                            "modality": xsess.modality,
+                            "order": order,
+                        }
+                    }
+                    if tree.add_leaf(
+                        [xsess.subject.label, xsess.label], metadata=metadata
+                    ):
+                        order += 1  # order only gets incremented if the session isn't excluded
 
     def populate_row(self, row: DataRow):
         """
