@@ -64,8 +64,8 @@ class Xnat(RemoteStore):
 
     depth = 2
     DEFAULT_SPACE = Clinical
-    DEFAULT_HIERARCHY = ["subject", "session"]
-    DEFAULT_ID_PATTERNS = (("timepoint", "session:date_order"))
+    DEFAULT_HIERARCHY = ("subject", "session")
+    DEFAULT_ID_PATTERNS = (("timepoint", "session:order"),)
     PROV_RESOURCE = "PROVENANCE"
 
     #############################
@@ -85,27 +85,30 @@ class Xnat(RemoteStore):
             # Get all "leaf" nodes, i.e. XNAT imaging session objects
             xproject = self.connection.projects[tree.dataset_id]
             for xsubject in xproject.subjects.values():
+                # Sort sessions into a logical order
                 xsessions = sorted(
-                    xsubject.experiments.values(), key=attrgetter("date")
+                    xsubject.experiments.values(),
+                    key=lambda x: (x.date, x.time, x.label),
                 )
-                date_order = 1
+                order = 1
                 for xsess in xsessions:
+                    date = xsess.date.strftime("%Y%m%d") if xsess.date else None
                     metadata = {
                         "session": {
-                            "date": xsess.date.strftime("%Y%m%d"),
+                            "date": date,
                             "visit_id": xsess.visit_id,
                             "age": xsess.age,
                             "modality": xsess.modality,
-                            "date_order": date_order,
+                            "order": order,
                         }
                     }
                     exclusions = tree.add_leaf(
-                        [xsess.subject.label, xsess.label], metadata=metadata
+                        [xsubject.label, xsess.label], metadata=metadata
                     )
                     if "subject" in exclusions:
                         break  # No point attempting to add any other sessions for this subject
                     if exclusions != ["timepoint"]:
-                        date_order += 1  # gets incremented if the timepoint isn't explicitly excluded
+                        order += 1  # gets incremented if the timepoint isn't explicitly excluded
 
     def populate_row(self, row: DataRow):
         """
