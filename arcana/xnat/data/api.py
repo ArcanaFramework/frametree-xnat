@@ -65,7 +65,7 @@ class Xnat(RemoteStore):
     depth = 2
     DEFAULT_SPACE = Clinical
     DEFAULT_HIERARCHY = ["subject", "session"]
-    DEFAULT_ID_PATTERNS = (("timepoint", "session:order"))
+    DEFAULT_ID_PATTERNS = (("timepoint", "session:date_order"))
     PROV_RESOURCE = "PROVENANCE"
 
     #############################
@@ -88,7 +88,7 @@ class Xnat(RemoteStore):
                 xsessions = sorted(
                     xsubject.experiments.values(), key=attrgetter("date")
                 )
-                order = 1
+                date_order = 1
                 for xsess in xsessions:
                     metadata = {
                         "session": {
@@ -96,13 +96,16 @@ class Xnat(RemoteStore):
                             "visit_id": xsess.visit_id,
                             "age": xsess.age,
                             "modality": xsess.modality,
-                            "order": order,
+                            "date_order": date_order,
                         }
                     }
-                    if tree.add_leaf(
+                    exclusions = tree.add_leaf(
                         [xsess.subject.label, xsess.label], metadata=metadata
-                    ):
-                        order += 1  # order only gets incremented if the session isn't excluded
+                    )
+                    if "subject" in exclusions:
+                        break  # No point attempting to add any other sessions for this subject
+                    if exclusions != ["timepoint"]:
+                        date_order += 1  # gets incremented if the timepoint isn't explicitly excluded
 
     def populate_row(self, row: DataRow):
         """
