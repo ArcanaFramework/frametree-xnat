@@ -84,14 +84,13 @@ class Xnat(RemoteStore):
         with self.connection:
             # Get all "leaf" nodes, i.e. XNAT imaging session objects
             xproject = self.connection.projects[tree.dataset_id]
-            for xsubject in xproject.subjects.values():
+            subjects = sorted(xproject.subjects.values(), key=attrgetter("label"))
+            for xsubject in subjects:
                 # Sort sessions into a logical order
                 xsessions = sorted(
                     xsubject.experiments.values(),
                     key=lambda x: (x.date, x.time, x.label),
                 )
-                order = 1
-                included_order = 1
                 for xsess in xsessions:
                     date = xsess.date.strftime("%Y%m%d") if xsess.date else None
                     metadata = {
@@ -100,18 +99,13 @@ class Xnat(RemoteStore):
                             "visit_id": xsess.visit_id,
                             "age": xsess.age,
                             "modality": xsess.modality,
-                            "order": order,
-                            "included_order": included_order,
                         }
                     }
-                    _, exclusions = tree.add_leaf(
+                    _, exclusion_reasons = tree.add_leaf(
                         [xsubject.label, xsess.label], metadata=metadata
                     )
-                    if "subject" in exclusions:
+                    if "subject" in exclusion_reasons:
                         break  # No point attempting to add any other sessions for this subject
-                    if exclusions != ["timepoint"]:
-                        included_order += 1  # gets incremented if the timepoint isn't explicitly excluded
-                    order += 1
 
     def populate_row(self, row: DataRow):
         """
