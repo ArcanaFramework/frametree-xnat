@@ -5,7 +5,7 @@ import logging
 import tempfile
 import attrs
 import xnat
-from arcana.core.data.space import Clinical
+from arcana.stdlib import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
 from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint

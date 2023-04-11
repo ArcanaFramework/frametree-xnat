@@ -66,7 +66,7 @@ def test_bids_export(
             ),
         ],
         id_patterns={
-            "timepoint": "session:order",
+            # "timepoint": "session:order",
             "group": r"subject::group(\d+).*",
             "member": r"subject::group\d+member(\d+)",
         }

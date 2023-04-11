@@ -101,11 +101,9 @@ class Xnat(RemoteStore):
                             "modality": xsess.modality,
                         }
                     }
-                    _, exclusion_reasons = tree.add_leaf(
+                    tree.add_leaf(
                         [xsubject.label, xsess.label], metadata=metadata
                     )
-                    if "subject" in exclusion_reasons:
-                        break  # No point attempting to add any other sessions for this subject
 
     def populate_row(self, row: DataRow):
         """
