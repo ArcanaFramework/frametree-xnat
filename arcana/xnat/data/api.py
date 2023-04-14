@@ -7,6 +7,7 @@ import logging
 import hashlib
 import json
 import re
+from operator import attrgetter
 from zipfile import ZipFile, BadZipfile
 import attrs
 import xnat.session
@@ -28,7 +29,7 @@ from arcana.core.exceptions import (
 from arcana.core.utils.serialize import asdict
 from arcana.core.data.tree import DataTree
 from arcana.core.data.entry import DataEntry
-from arcana.core.data import Clinical
+from arcana.stdlib import Clinical
 
 
 logger = logging.getLogger("arcana")
@@ -63,7 +64,8 @@ class Xnat(RemoteStore):
 
     depth = 2
     DEFAULT_SPACE = Clinical
-    DEFAULT_HIERARCHY = ["subject", "session"]
+    DEFAULT_HIERARCHY = ("subject", "session")
+    # DEFAULT_ID_PATTERNS = (("timepoint", "session:order"),)
     PROV_RESOURCE = "PROVENANCE"
 
     #############################
@@ -81,8 +83,27 @@ class Xnat(RemoteStore):
         """
         with self.connection:
             # Get all "leaf" nodes, i.e. XNAT imaging session objects
-            for exp in self.connection.projects[tree.dataset_id].experiments.values():
-                tree.add_leaf([exp.subject.label, exp.label])
+            xproject = self.connection.projects[tree.dataset_id]
+            subjects = sorted(xproject.subjects.values(), key=attrgetter("label"))
+            for xsubject in subjects:
+                # Sort sessions into a logical order
+                xsessions = sorted(
+                    xsubject.experiments.values(),
+                    key=lambda x: (x.date, x.time, x.label),
+                )
+                for xsess in xsessions:
+                    date = xsess.date.strftime("%Y%m%d") if xsess.date else None
+                    metadata = {
+                        "session": {
+                            "date": date,
+                            "visit_id": xsess.visit_id,
+                            "age": xsess.age,
+                            "modality": xsess.modality,
+                        }
+                    }
+                    tree.add_leaf(
+                        [xsubject.label, xsess.label], metadata=metadata
+                    )
 
     def populate_row(self, row: DataRow):
         """

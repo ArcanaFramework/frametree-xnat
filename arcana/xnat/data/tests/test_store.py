@@ -10,7 +10,7 @@ import itertools
 import pytest
 from fileformats.generic import File
 from fileformats.field import Text as TextField
-from arcana.core.data.space import Clinical
+from arcana.stdlib import Clinical
 from arcana.core.data.set import Dataset
 from arcana.xnat.data import XnatViaCS
 from arcana.core.utils.serialize import asdict

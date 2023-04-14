@@ -6,10 +6,9 @@ import os
 import re
 import logging
 from pathlib import Path
-import shutil
 import attrs
 from fileformats.core.base import FileSet
-from arcana.core.data import Clinical
+from arcana.stdlib import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
