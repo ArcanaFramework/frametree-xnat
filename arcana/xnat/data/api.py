@@ -564,6 +564,9 @@ class Xnat(RemoteStore):
             elif row.frequency == Clinical.session:
                 xrow = xproject.experiments[row.frequency_id("session")]
             else:
+                # For rows that don't have a place within the standard XNAT hierarchy,
+                # e.g. groups, we create a dummy subject with an escaped name to hold
+                # the associated data
                 xrow = self.connection.classes.SubjectData(
                     label=self.make_row_name(row), parent=xproject
                 )
