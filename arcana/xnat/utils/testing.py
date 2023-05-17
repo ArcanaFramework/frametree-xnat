@@ -32,7 +32,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
     hierarchy: list[DataSpace] = ["subject", "session"]
     filesets: ty.Optional[list[str]] = None
 
-    def make_entries(self, row: DataRow, source_data: Path = None):
+    def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None):
         logger.debug("Making entries in %s row: %s", row, self.scans)
         xrow = row.dataset.store.get_xrow(row)
         xclasses = xrow.xnat_session.classes
