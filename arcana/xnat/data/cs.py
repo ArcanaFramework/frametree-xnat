@@ -111,7 +111,7 @@ class XnatViaCS(Xnat):
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         if not entry.is_derivative:
             super().put_fileset(fileset, entry)  # Fallback to API access
-        cached = fileset.copy_to(
+        cached = fileset.copy(
             dest_dir=self.output_mount,
             make_dirs=True,
             stem=entry.path.split("/")[-1].split("@")[0],

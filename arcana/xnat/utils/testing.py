@@ -50,7 +50,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
                     source_fallback=True,
                     escape_source_name=False,
                 )
-                item.copy_to(tmp_dir)
+                item.copy(tmp_dir)
                 xresource.upload_dir(tmp_dir)
 
 
