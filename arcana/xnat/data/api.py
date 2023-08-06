@@ -29,7 +29,7 @@ from arcana.core.exceptions import (
 from arcana.core.utils.serialize import asdict
 from arcana.core.data.tree import DataTree
 from arcana.core.data.entry import DataEntry
-from arcana.stdlib import Clinical
+from arcana.common import Clinical
 
 
 logger = logging.getLogger("arcana")

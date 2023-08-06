@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 import attrs
 from fileformats.core import FileSet
-from arcana.stdlib import Clinical
+from arcana.common import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
