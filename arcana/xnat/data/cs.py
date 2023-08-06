@@ -113,7 +113,7 @@ class XnatViaCS(Xnat):
         cached = fileset.copy(
             dest_dir=self.output_mount,
             make_dirs=True,
-            stem=entry.path.split("/")[-1].split("@")[0],
+            new_stem=entry.path.split("/")[-1].split("@")[0],
             trim=False,
             overwrite=True,
         )
