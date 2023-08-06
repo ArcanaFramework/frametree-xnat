@@ -92,8 +92,7 @@ class XnatViaCS(Xnat):
         )
         if entry.is_derivative:
             # entry is in input mount
-            stem_path = self.entry_fspath(entry)
-            fspaths = list(stem_path.iterdir())
+            resource_path = self.entry_fspath(entry)
         else:
             path = re.match(
                 r"/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/"
@@ -105,7 +104,7 @@ class XnatViaCS(Xnat):
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-            fspaths = list(resource_path.iterdir())
+        fspaths = list(p for p in resource_path.iterdir() if not p.name.endswith("_catalog.xml"))
         return datatype(fspaths)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
