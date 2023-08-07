@@ -8,9 +8,10 @@ from pathlib import Path
 from functools import reduce
 import itertools
 import pytest
+from pydra.utils.hash import hash_single, Cache
 from fileformats.generic import File
 from fileformats.field import Text as TextField
-from arcana.stdlib import Clinical
+from arcana.common import Clinical
 from arcana.core.data.set import Dataset
 from arcana.xnat.data import XnatViaCS
 from arcana.core.utils.serialize import asdict
@@ -178,3 +179,10 @@ def test_provenance_roundtrip(datatype: type, value: str, simple_dataset: Datase
         data_store.put_provenance(provenance, entry)  # Save the provenance
         reloaded_provenance = data_store.get_provenance(entry)  # reload the provenance
         assert provenance == reloaded_provenance
+
+
+def test_dataset_bytes_hash(static_dataset):
+
+    hsh = hash_single(static_dataset, Cache({}))
+    # Check hashing is stable
+    assert hash_single(static_dataset, Cache({})) == hsh

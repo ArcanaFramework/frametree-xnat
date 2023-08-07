@@ -5,7 +5,7 @@ import logging
 import tempfile
 import attrs
 import xnat
-from arcana.stdlib import Clinical
+from arcana.common import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
 from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
@@ -30,9 +30,9 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
     # Overwrite attributes in core blueprint class
     space: type = Clinical
     hierarchy: list[DataSpace] = ["subject", "session"]
-    filesets: list[str] = None
+    filesets: ty.Optional[list[str]] = None
 
-    def make_entries(self, row: DataRow, source_data: Path = None):
+    def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None):
         logger.debug("Making entries in %s row: %s", row, self.scans)
         xrow = row.dataset.store.get_xrow(row)
         xclasses = xrow.xnat_session.classes
@@ -50,7 +50,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
                     source_fallback=True,
                     escape_source_name=False,
                 )
-                item.copy_to(tmp_dir)
+                item.copy(tmp_dir)
                 xresource.upload_dir(tmp_dir)
 
 

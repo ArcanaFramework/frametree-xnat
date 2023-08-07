@@ -17,7 +17,7 @@ def test_add_source_xnat(dataset, cli_runner, arcana_home, work_dir):
         [
             dataset_locator,
             "a_source",
-            "fileformats.text:Plain",
+            "text/text-file",
             "--path",
             "file1",
             "--row-frequency",
@@ -47,7 +47,7 @@ def test_add_sink_xnat(dataset, work_dir, arcana_home, cli_runner):
         [
             dataset_locator,
             "a_sink",
-            "fileformats.text:Plain",
+            "text/text-file",
             "--path",
             "deriv",
             "--row-frequency",

@@ -7,8 +7,8 @@ import re
 import logging
 from pathlib import Path
 import attrs
-from fileformats.core.base import FileSet
-from arcana.stdlib import Clinical
+from fileformats.core import FileSet
+from arcana.common import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
@@ -92,8 +92,7 @@ class XnatViaCS(Xnat):
         )
         if entry.is_derivative:
             # entry is in input mount
-            stem_path = self.entry_fspath(entry)
-            fspaths = list(stem_path.iterdir())
+            resource_path = self.entry_fspath(entry)
         else:
             path = re.match(
                 r"/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/"
@@ -105,16 +104,16 @@ class XnatViaCS(Xnat):
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-            fspaths = list(resource_path.iterdir())
+        fspaths = list(p for p in resource_path.iterdir() if not p.name.endswith("_catalog.xml"))
         return datatype(fspaths)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         if not entry.is_derivative:
             super().put_fileset(fileset, entry)  # Fallback to API access
-        cached = fileset.copy_to(
+        cached = fileset.copy(
             dest_dir=self.output_mount,
             make_dirs=True,
-            stem=entry.path.split("/")[-1].split("@")[0],
+            new_stem=entry.path.split("/")[-1].split("@")[0],
             trim=False,
             overwrite=True,
         )

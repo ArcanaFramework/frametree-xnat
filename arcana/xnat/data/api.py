@@ -29,7 +29,7 @@ from arcana.core.exceptions import (
 from arcana.core.utils.serialize import asdict
 from arcana.core.data.tree import DataTree
 from arcana.core.data.entry import DataEntry
-from arcana.stdlib import Clinical
+from arcana.common import Clinical
 
 
 logger = logging.getLogger("arcana")
@@ -358,14 +358,14 @@ class Xnat(RemoteStore):
                 self.connection.download_stream(
                     entry.uri + "/files", f, format="zip", verbose=True
                 )
-            # Extract downloaded zip file
-            expanded_dir = download_dir / "expanded"
-            try:
-                with ZipFile(zip_path) as zip_file:
-                    zip_file.extractall(expanded_dir)
-            except BadZipfile as e:
-                raise ArcanaError(f"Could not unzip file '{zip_path}' ({e})") from e
-            data_path = glob(str(expanded_dir) + "/**/files", recursive=True)[0]
+        # Extract downloaded zip file
+        expanded_dir = download_dir / "expanded"
+        try:
+            with ZipFile(zip_path) as zip_file:
+                zip_file.extractall(expanded_dir)
+        except BadZipfile as e:
+            raise ArcanaError(f"Could not unzip file '{zip_path}' ({e})") from e
+        data_path = next(expanded_dir.glob("**/files"))
         return data_path
 
     def upload_files(self, cache_path: Path, entry: DataEntry):
@@ -564,6 +564,9 @@ class Xnat(RemoteStore):
             elif row.frequency == Clinical.session:
                 xrow = xproject.experiments[row.frequency_id("session")]
             else:
+                # For rows that don't have a place within the standard XNAT hierarchy,
+                # e.g. groups, we create a dummy subject with an escaped name to hold
+                # the associated data
                 xrow = self.connection.classes.SubjectData(
                     label=self.make_row_name(row), parent=xproject
                 )
