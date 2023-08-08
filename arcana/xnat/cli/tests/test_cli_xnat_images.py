@@ -57,12 +57,16 @@ def test_pull_xnat_images(
     ):
 
         image_spec = {
+            "title": "a command to test build process",
             "command": cmd_spec,
-            "version": PKG_VERSION,
-            "build_iteration": WRAPPER_VERSION,
+            "version": {
+                "package": PKG_VERSION,
+                "build": WRAPPER_VERSION,
+            },
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
-            "info_url": "http://concatenate.readthefakedocs.io",
-            "description": "a command to test build process",
+            "docs": {
+                "info_url": "http://concatenate.readthefakedocs.io",
+            }
         }
 
         with open((pkg_path / name).with_suffix(".yaml"), "w") as f:
