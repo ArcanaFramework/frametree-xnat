@@ -12,7 +12,7 @@ from zipfile import ZipFile, BadZipfile
 import attrs
 import xnat.session
 from fileformats.core import FileSet, Field
-from fileformats.medimage import DicomSet
+from fileformats.medimage import DicomSeries
 from fileformats.core.exceptions import FormatRecognitionError
 from arcana.core.utils.misc import (
     path2varname,
@@ -127,7 +127,7 @@ class Xnat(RemoteStore):
                     for xresource in xscan.resources.values():
                         uri = self._get_resource_uri(xresource)
                         if xresource.label in ("DICOM", "secondary"):
-                            datatype = DicomSet
+                            datatype = DicomSeries
                             item_metadata = self.get_dicom_header(uri)
                         else:
                             datatype = FileSet

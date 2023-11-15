@@ -6,7 +6,7 @@ import tempfile
 import requests
 from docker.errors import ContainerError
 import pytest
-from fileformats.medimage import DicomSet
+from fileformats.medimage import DicomSeries
 import medimages4tests.dummy.dicom.mri.t1w.siemens.skyra.syngo_d13c
 import medimages4tests.dummy.dicom.mri.fmap.siemens.skyra.syngo_d13c
 from arcana.core.cli.dataset import export
@@ -56,7 +56,7 @@ def test_bids_export(
                 [
                     FileBP(
                         path="DICOM",
-                        datatype=DicomSet,
+                        datatype=DicomSeries,
                         filenames=["dicom/t1w/*"],
                     )
                 ],
@@ -77,7 +77,7 @@ def test_bids_export(
     )
     original.add_source(
         name="anat/T1w",
-        datatype=DicomSet,
+        datatype=DicomSeries,
         path="mprage",
     )
     original.save()

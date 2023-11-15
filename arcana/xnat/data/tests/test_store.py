@@ -8,7 +8,7 @@ from pathlib import Path
 from functools import reduce
 import itertools
 import pytest
-from pydra.utils.hash import hash_single, Cache
+from pydra.utils.hash import hash_object
 from fileformats.generic import File
 from fileformats.field import Text as TextField
 from arcana.common import Clinical
@@ -183,6 +183,6 @@ def test_provenance_roundtrip(datatype: type, value: str, simple_dataset: Datase
 
 def test_dataset_bytes_hash(static_dataset):
 
-    hsh = hash_single(static_dataset, Cache({}))
+    hsh = hash_object(static_dataset)
     # Check hashing is stable
-    assert hash_single(static_dataset, Cache({})) == hsh
+    assert hash_object(static_dataset) == hsh
