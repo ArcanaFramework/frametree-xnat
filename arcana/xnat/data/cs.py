@@ -83,7 +83,7 @@ class XnatViaCS(Xnat):
             input_mount = self.get_input_mount(entry.row)
         except ArcanaNoDirectXnatMountException:
             # Fallback to API access
-            return super().get_fileset(entry)
+            return super().get_fileset(entry, datatype)
         logger.info(
             "Getting %s from %s:%s row via direct access to archive directory",
             entry.path,
