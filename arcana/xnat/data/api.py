@@ -62,6 +62,8 @@ class Xnat(RemoteStore):
         completed if they are attempting to download the same fileset
     """
 
+    verify_ssl: bool = True
+
     depth = 2
     DEFAULT_SPACE = Clinical
     DEFAULT_HIERARCHY = ("subject", "session")
@@ -101,9 +103,7 @@ class Xnat(RemoteStore):
                             "modality": xsess.modality,
                         }
                     }
-                    tree.add_leaf(
-                        [xsubject.label, xsess.label], metadata=metadata
-                    )
+                    tree.add_leaf([xsubject.label, xsess.label], metadata=metadata)
 
     def populate_row(self, row: DataRow):
         """
@@ -241,12 +241,12 @@ class Xnat(RemoteStore):
             NoExitWrapper so the returned connection can be used
             in a "with" statement in the method.
         """
-        sess_kwargs = {}
+        kwargs = {}
         if self.user is not None:
-            sess_kwargs["user"] = self.user
+            kwargs["user"] = self.user
         if self.password is not None:
-            sess_kwargs["password"] = self.password
-        return xnat.connect(server=self.server, **sess_kwargs)
+            kwargs["password"] = self.password
+        return xnat.connect(server=self.server, verify=self.verify_ssl, **kwargs)
 
     def disconnect(self, session: xnat.XNATSession):
         """
