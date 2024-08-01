@@ -22,4 +22,4 @@ __pycache__
 ~*
 /test-data/dicom-dataset
 *.venv
-/arcana/xnat/_version.py
+/frametree/xnat/_version.py
