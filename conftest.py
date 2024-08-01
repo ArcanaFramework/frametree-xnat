@@ -69,7 +69,7 @@ PKG_DIR = Path(__file__).parent
 
 log_level = logging.WARNING
 
-logger = logging.getLogger("arcana")
+logger = logging.getLogger("frametree")
 logger.setLevel(log_level)
 
 sch = logging.StreamHandler()
@@ -78,7 +78,7 @@ formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(messag
 sch.setFormatter(formatter)
 logger.addHandler(sch)
 
-logger = logging.getLogger("arcana")
+logger = logging.getLogger("frametree")
 logger.setLevel(log_level)
 
 sch = logging.StreamHandler()
@@ -121,10 +121,10 @@ def pkg_dir():
 
 
 @pytest.fixture
-def arcana_home(work_dir):
-    arcana_home = work_dir / "arcana-home"
-    with patch.dict(os.environ, {"ARCANA_HOME": str(arcana_home)}):
-        yield arcana_home
+def frametree_home(work_dir):
+    frametree_home = work_dir / "frametree-home"
+    with patch.dict(os.environ, {"FRAMETREE_HOME": str(frametree_home)}):
+        yield frametree_home
 
 
 # -----------------------
@@ -329,7 +329,9 @@ def static_dataset(
     project_id = run_prefix + dataset_id + str(hex(random.getrandbits(16)))[2:]
     logger.debug("Making dataset at %s", project_id)
     blueprint.make_dataset(
-        dataset_id=project_id, store=xnat_repository, source_data=source_data,
+        dataset_id=project_id,
+        store=xnat_repository,
+        source_data=source_data,
         name="",
     )
     logger.debug("accessing dataset at %s", project_id)
@@ -355,7 +357,9 @@ def dataset(
         + str(hex(random.getrandbits(16)))[2:]
     )
     blueprint.make_dataset(
-        dataset_id=project_id, store=xnat_repository, source_data=source_data,
+        dataset_id=project_id,
+        store=xnat_repository,
+        source_data=source_data,
         name="",
     )
     return access_dataset(project_id, access_method, xnat_repository, xnat_archive_dir)
@@ -368,14 +372,11 @@ def simple_dataset(xnat_repository, work_dir, run_prefix):
         scans=[
             ScanBP(
                 name="scan1",
-                resources=[FileBP(path="TEXT", datatype=Text, filenames=["file.txt"])])
+                resources=[FileBP(path="TEXT", datatype=Text, filenames=["file.txt"])],
+            )
         ],
     )
-    project_id = (
-        run_prefix
-        + "simple"
-        + str(hex(random.getrandbits(16)))[2:]
-    )
+    project_id = run_prefix + "simple" + str(hex(random.getrandbits(16)))[2:]
     return blueprint.make_dataset(xnat_repository, project_id, name="")
 
 
@@ -504,7 +505,7 @@ def dummy_niftix(work_dir):
 @pytest.fixture(scope="session")
 def command_spec():
     return {
-        "task": "arcana.testing.tasks:concatenate",
+        "task": "frametree.testing.tasks:concatenate",
         "inputs": {
             "first_file": {
                 "datatype": "text/text-file",
@@ -545,8 +546,8 @@ def command_spec():
 
 BIDS_VALIDATOR_DOCKER = "bids/validator:latest"
 SUCCESS_STR = "This dataset appears to be BIDS compatible"
-MOCK_BIDS_APP_IMAGE = "arcana-mock-bids-app"
-BIDS_VALIDATOR_APP_IMAGE = "arcana-bids-validator-app"
+MOCK_BIDS_APP_IMAGE = "frametree-mock-bids-app"
+BIDS_VALIDATOR_APP_IMAGE = "frametree-bids-validator-app"
 
 
 @pytest.fixture(scope="session")
@@ -593,7 +594,7 @@ def bids_command_spec(mock_bids_app_executable):
     }
 
     return {
-        "task": "arcana.bids.tasks:bids_app",
+        "task": "frametree.bids.tasks:bids_app",
         "inputs": inputs,
         "outputs": outputs,
         "row_frequency": "session",
