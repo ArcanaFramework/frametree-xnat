@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "frametree-xnat"
 description = "An extension of FrameTree to support data stored in XNAT repository"
-readme = "README.rst"
+readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "frametree",
