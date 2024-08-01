@@ -68,13 +68,13 @@ def install_and_launch_xnat_cs_command(
     ----------
     cmd_name : str
         The name to install the command as
-    command_json : dict[str, Any]
+    command_json : ty.Dict[str, Any]
         JSON that defines the XNAT command in the container service (see `generate_xnat_command`)
     project_id : str
         ID of the project to enable the command for
     session_id : str
         ID of the session to launch the command on
-    inputs : dict[str, str]
+    inputs : ty.Dict[str, str]
         Inputs passed to the pipeline at launch (i.e. typically through text fields in the CS launch UI)
     xlogin : xnat.XNATSession
         XnatPy connection to the XNAT server

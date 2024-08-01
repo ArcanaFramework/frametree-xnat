@@ -165,7 +165,7 @@ class Xnat(RemoteStore):
         ----------
         dataset_id: str
             The ID/path of the dataset within the store
-        definition: dict[str, Any]
+        definition: ty.Dict[str, Any]
             A dictionary containing the dct Dataset to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
@@ -187,7 +187,9 @@ class Xnat(RemoteStore):
                 json.dump(definition, f, indent="    ")
             xresource.upload(str(definition_file), name + ".json", overwrite=True)
 
-    def load_dataset_definition(self, dataset_id: str, name: str) -> dict[str, ty.Any]:
+    def load_dataset_definition(
+        self, dataset_id: str, name: str
+    ) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters
@@ -200,7 +202,7 @@ class Xnat(RemoteStore):
 
         Returns
         -------
-        definition: dict[str, Any]
+        definition: ty.Dict[str, Any]
             A dct Dataset object that was saved in the data store
         """
         with self.connection:
@@ -265,7 +267,7 @@ class Xnat(RemoteStore):
         ----------
         entry: DataEntry
             The item to store the provenance data for
-        provenance: dict[str, Any]
+        provenance: ty.Dict[str, Any]
             The provenance data to store
         """
         xresource, _, cache_path = self._provenance_location(
@@ -285,7 +287,7 @@ class Xnat(RemoteStore):
 
         Returns
         -------
-        provenance: dict[str, Any] or None
+        provenance: ty.Dict[str, Any] or None
             The provenance data stored in the repository for the data item.
             None if no provenance data has been stored
         """
@@ -527,7 +529,7 @@ class Xnat(RemoteStore):
         }
         return checksums
 
-    def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
+    def calculate_checksums(self, fileset: FileSet) -> ty.Dict[str, str]:
         """
         Downloads the checksum digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to
