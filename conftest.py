@@ -28,7 +28,7 @@ from fileformats.image import Png
 from fileformats.application import Json
 from fileformats.generic import Directory
 from frametree.xnat.api import Xnat
-from frametree.xnat.utils.testing import (
+from frametree.xnat.testing import (
     TestXnatDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,
     ScanBlueprint as ScanBP,

@@ -301,7 +301,7 @@ class Xnat(RemoteStore):
             provenance = json.load(f)
         return provenance
 
-    def create_data_tree(self, id: str, leaves: ty.List[tuple[str, ...]], **kwargs):
+    def create_data_tree(self, id: str, leaves: ty.List[ty.Tuple[str, ...]], **kwargs):
         """Creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 
