@@ -301,7 +301,7 @@ class Xnat(RemoteStore):
             provenance = json.load(f)
         return provenance
 
-    def create_data_tree(self, id: str, leaves: list[tuple[str, ...]], **kwargs):
+    def create_data_tree(self, id: str, leaves: ty.List[tuple[str, ...]], **kwargs):
         """Creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 
@@ -390,7 +390,7 @@ class Xnat(RemoteStore):
 
     def download_value(
         self, entry: DataEntry
-    ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
+    ) -> ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]:
         """
         Extract and return the value of the field from the store
 
@@ -412,7 +412,7 @@ class Xnat(RemoteStore):
 
     def upload_value(
         self,
-        value: ty.Union[float, int, str, list[float], list[int], list[str]],
+        value: ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]],
         entry: DataEntry,
     ):
         """Store the value for a field in the XNAT repository

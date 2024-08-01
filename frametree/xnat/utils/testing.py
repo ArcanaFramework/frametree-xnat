@@ -29,8 +29,8 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
 
     # Overwrite attributes in core blueprint class
     space: type = Clinical
-    hierarchy: list[DataSpace] = ["subject", "session"]
-    filesets: ty.Optional[list[str]] = None
+    hierarchy: ty.List[DataSpace] = ["subject", "session"]
+    filesets: ty.Optional[ty.List[str]] = None
 
     def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None):
         logger.debug("Making entries in %s row: %s", row, self.scans)
