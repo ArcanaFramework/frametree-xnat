@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/arcanaframework/frametree-xnat/branch/main/graph/badge.svg?token=UIS0OGPST7)](https://codecov.io/gh/arcanaframework/frametree-xnat)
 [![Python versions](https://img.shields.io/pypi/pyversions/frametree-xnat.svg)](https://pypi.python.org/pypi/frametree-xnat/)
 [![Latest Version](https://img.shields.io/pypi/v/frametree-xnat.svg)](https://pypi.python.org/pypi/frametree-xnat/)
-[![docs](https://github.com/ArcanaFramework/arcana/actions/workflows/docs.yml/badge.svg)](https://arcanaframework.github.io/arcana)
+[![docs](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://arcanaframework.github.io/frametree)
 
 An extension for the [FrameTree](http://arcanaframework.github.io/framtree) framework that support defining data frames in [XNAT](https://xnat.org) projects
 
