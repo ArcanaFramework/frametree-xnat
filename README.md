@@ -1,5 +1,5 @@
 # FrameTree - XNAT
-![tests](https://github.com/arcanaframework/frametree-xnat/actions/workflows/tests.yml/badge.svg)
+[![tests](https://github.com/arcanaframework/frametree-xnat/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ArcanaFramework/frametree-xnat/actions/workflows/ci-cd.yml)
 [![codecov](https://codecov.io/gh/arcanaframework/frametree-xnat/branch/main/graph/badge.svg?token=UIS0OGPST7)](https://codecov.io/gh/arcanaframework/frametree-xnat)
 [![Python versions](https://img.shields.io/pypi/pyversions/frametree-xnat.svg)](https://pypi.python.org/pypi/frametree-xnat/)
 [![Latest Version](https://img.shields.io/pypi/v/frametree-xnat.svg)](https://pypi.python.org/pypi/frametree-xnat/)
