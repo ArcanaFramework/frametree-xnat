@@ -1,4 +1,4 @@
-from arcana.core.cli.ext import ext
+from frametree.core.cli.ext import ext
 
 
 @ext.group(name="xnat")

@@ -2,20 +2,21 @@
 Helper functions for generating XNAT Container Service compatible Docker
 containers
 """
+
 import os
 import re
 import logging
 from pathlib import Path
 import attrs
 from fileformats.core import FileSet
-from arcana.common import Clinical
-from arcana.core.data.space import DataSpace
-from arcana.core.data.row import DataRow
-from arcana.core.data.entry import DataEntry
-from arcana.core.exceptions import ArcanaNoDirectXnatMountException
+from frametree.common import Clinical
+from frametree.core.space import DataSpace
+from frametree.core.row import DataRow
+from frametree.core.entry import DataEntry
+from frametree.core.exceptions import FrameTreeNoDirectXnatMountException
 from .api import Xnat, path2label
 
-logger = logging.getLogger("arcana")
+logger = logging.getLogger("frametree")
 
 
 @attrs.define
@@ -81,7 +82,7 @@ class XnatViaCS(Xnat):
         access if that fails"""
         try:
             input_mount = self.get_input_mount(entry.row)
-        except ArcanaNoDirectXnatMountException:
+        except FrameTreeNoDirectXnatMountException:
             # Fallback to API access
             return super().get_fileset(entry, datatype)
         logger.info(
@@ -104,7 +105,9 @@ class XnatViaCS(Xnat):
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-        fspaths = list(p for p in resource_path.iterdir() if not p.name.endswith("_catalog.xml"))
+        fspaths = list(
+            p for p in resource_path.iterdir() if not p.name.endswith("_catalog.xml")
+        )
         return datatype(fspaths)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
@@ -149,7 +152,7 @@ class XnatViaCS(Xnat):
         ):
             return self.input_mount / row.id
         else:
-            raise ArcanaNoDirectXnatMountException
+            raise FrameTreeNoDirectXnatMountException
 
     def _make_uri(self, row: DataRow):
         uri = "/data/archive/projects/" + row.dataset.id

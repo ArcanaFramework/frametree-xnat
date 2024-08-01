@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "frametree-xnat"
+description = "An extension of FrameTree to support data stored in XNAT repository"
+readme = "README.rst"
+requires-python = ">=3.8"
+dependencies = [
+    "frametree",
+    "fileformats >=0.3.3",
+    "fileformats-medimage >=0.2.1",
+    "fileformats-medimage-extras >=0.1.3",
+    "xnat",
+]
+license = { file = "LICENSE" }
+authors = [{ name = "Thomas G. Close", email = "tom.g.close@gmail.com" }]
+maintainers = [{ name = "Thomas G. Close", email = "tom.g.close@gmail.com" }]
+keywords = ["frametree"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = ["black", "codespell", "flake8", "flake8-pyproject", "pre-commit"]
+doc = [
+    "docutils >=0.10",
+    "furo >=2022.2.14.1",
+    "mock >=1.0",
+    "numpydoc >=0.6.0",
+    "packaging",
+    "sphinx >=2.1.2",
+    "sphinx-argparse >=0.2.0",
+    "sphinx-click >=3.1",
+]
+test = [
+    "frametree-bids",
+    "fileformats-testing",
+    "medimages4tests >=0.3",
+    "pytest >=5.4.3",
+    "pytest-cov >=2.12.1",
+    "pytest-env >=0.6.2",
+    "xnat4tests >=0.3.3",
+    "imageio >=2.25.0",
+]
+
+[project.urls]
+documentation = "https://frametree.readthedocs.io"
+repository = "https://github.com/ArcanaFramework/frametree-xnat.git"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "frametree/xnat/_version.py"
+
+[tool.hatch.build]
+packages = ["frametree"]
+exclude = ["/tests"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+exclude = "_version.py"
+
+[tool.codespell]
+ignore-words = ".codespell-ignorewords"
+
+[tool.flake8]
+doctests = true
+per-file-ignores = ["__init__.py:F401"]
+max-line-length = 88
+select = "C,E,F,W,B,B950"
+extend-ignore = ['E203', 'E501', 'E129', 'W503']

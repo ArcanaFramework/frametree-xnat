@@ -1,9 +1,9 @@
-from arcana.core.cli.store import add, ls, remove, rename
-from arcana.core.utils.misc import show_cli_trace
-from arcana.core.data.store import DataStore
+from frametree.core.cli.store import add, ls, remove, rename
+from frametree.core.utils import show_cli_trace
+from frametree.core.store import DataStore
 
 
-def test_store_cli(xnat_repository, cli_runner, arcana_home, work_dir):
+def test_store_cli(xnat_repository, cli_runner, frametree_home, work_dir):
     # Add new XNAT configuration
     result = cli_runner(
         add,
@@ -22,11 +22,11 @@ def test_store_cli(xnat_repository, cli_runner, arcana_home, work_dir):
     # List all saved and built-in stores
     result = cli_runner(ls, [])
     assert result.exit_code == 0, show_cli_trace(result)
-    assert "test-xnat - arcana.xnat.data.api:Xnat" in result.output
+    assert "test-xnat - frametree.xnat.api:Xnat" in result.output
     assert "    server: " + xnat_repository.server in result.output
 
 
-def test_store_cli_remove(xnat_repository, cli_runner, arcana_home, work_dir):
+def test_store_cli_remove(xnat_repository, cli_runner, frametree_home, work_dir):
     new_store_name = "test-xnat"
     # Create a new home directory so it doesn't conflict with user settings
     # Add new XNAT configuration
@@ -53,7 +53,7 @@ def test_store_cli_remove(xnat_repository, cli_runner, arcana_home, work_dir):
     assert new_store_name not in result.output
 
 
-def test_store_cli_rename(xnat_repository, cli_runner, arcana_home, work_dir):
+def test_store_cli_rename(xnat_repository, cli_runner, frametree_home, work_dir):
     old_store_name = "i123"
     new_store_name = "y456"
     # Add new XNAT configuration
@@ -72,16 +72,18 @@ def test_store_cli_rename(xnat_repository, cli_runner, arcana_home, work_dir):
     )
     # Check store is saved
     result = cli_runner(ls, [])
-    assert "i123 - arcana.xnat.data.api:Xnat" in result.output
+    assert "i123 - frametree.xnat.api:Xnat" in result.output
 
     cli_runner(rename, [old_store_name, new_store_name])
     # Check store is renamed
     result = cli_runner(ls, [])
-    assert "i123 - arcana.xnat.data.api:Xnat" not in result.output
-    assert "y456 - arcana.xnat.data.api:Xnat" in result.output
+    assert "i123 - frametree.xnat.api:Xnat" not in result.output
+    assert "y456 - frametree.xnat.api:Xnat" in result.output
 
 
-def test_store_cli_encrypt_credentials(xnat_repository, cli_runner, arcana_home, work_dir):
+def test_store_cli_encrypt_credentials(
+    xnat_repository, cli_runner, frametree_home, work_dir
+):
     # Add new XNAT configuration
     result = cli_runner(
         add,

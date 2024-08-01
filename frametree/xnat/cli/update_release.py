@@ -17,7 +17,7 @@ PULL_IMAGES_XNAT_PASS_KEY = "XNAT_PASS"
 JSON file using the XNAT instance's REST API.
 
 MANIFEST_FILE is a JSON file containing a list of container images built in a release
-created by `arcana deploy xnat build`
+created by `frametree deploy xnat build`
 
 Authentication credentials can be passed through the {PULL_IMAGES_XNAT_USER_KEY}
 and {PULL_IMAGES_XNAT_PASS_KEY} environment variables. Otherwise, tokens can be saved

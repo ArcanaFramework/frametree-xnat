@@ -11,10 +11,10 @@ import pytest
 from pydra.utils.hash import hash_object
 from fileformats.generic import File
 from fileformats.field import Text as TextField
-from arcana.common import Clinical
-from arcana.core.data.set import Dataset
-from arcana.xnat.data import XnatViaCS
-from arcana.core.utils.serialize import asdict
+from frametree.common import Clinical
+from frametree.core.set import Dataset
+from frametree.xnat import XnatViaCS
+from frametree.core.serialize import asdict
 
 if sys.platform == "win32":
 
@@ -34,7 +34,7 @@ else:
         )
 
 
-# logger = logging.getLogger('arcana')
+# logger = logging.getLogger('frametree')
 # logger.setLevel(logging.INFO)
 
 
@@ -79,7 +79,7 @@ def test_get(static_dataset: Dataset, caplog):
                     source_name, path=scan_bp.name, datatype=resource_bp.datatype
                 )
                 expected_files[source_name] = set(resource_bp.filenames)
-    with caplog.at_level(logging.INFO, logger="arcana"):
+    with caplog.at_level(logging.INFO, logger="frametree"):
         for row in static_dataset.rows(Clinical.session):
             for source_name, files in expected_files.items():
                 try:
@@ -129,7 +129,7 @@ def test_post(dataset: Dataset, source_data: Path, caplog):
         all_checksums[deriv_bp.path] = item.hash_files()
         # Insert into first row of that row_frequency in dataset
         row = next(iter(dataset.rows(deriv_bp.row_frequency)))
-        with caplog.at_level(logging.INFO, logger="arcana"):
+        with caplog.at_level(logging.INFO, logger="frametree"):
             row[deriv_bp.path] = item
         method_str = "direct" if type(dataset.store) is XnatViaCS else "api"
         assert f"{method_str} access" in caplog.text.lower()

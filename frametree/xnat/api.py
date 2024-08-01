@@ -1,7 +1,6 @@
 import os.path as op
 from pathlib import Path
 import typing as ty
-from glob import glob
 import tempfile
 import logging
 import hashlib
@@ -14,25 +13,25 @@ import xnat.session
 from fileformats.core import FileSet, Field
 from fileformats.medimage import DicomSeries
 from fileformats.core.exceptions import FormatRecognitionError
-from arcana.core.utils.misc import (
+from frametree.core.utils import (
     path2varname,
     varname2path,
 )
-from arcana.core.data.store.remote import (
+from frametree.core.store.remote import (
     RemoteStore,
 )
-from arcana.core.data.row import DataRow
-from arcana.core.exceptions import (
-    ArcanaError,
-    ArcanaUsageError,
+from frametree.core.row import DataRow
+from frametree.core.exceptions import (
+    FrameTreeError,
+    FrameTreeUsageError,
 )
-from arcana.core.utils.serialize import asdict
-from arcana.core.data.tree import DataTree
-from arcana.core.data.entry import DataEntry
-from arcana.common import Clinical
+from frametree.core.serialize import asdict
+from frametree.core.tree import DataTree
+from frametree.core.entry import DataEntry
+from frametree.common import Clinical
 
 
-logger = logging.getLogger("arcana")
+logger = logging.getLogger("frametree")
 
 tag_parse_re = re.compile(r"\((\d+),(\d+)\)")
 
@@ -364,7 +363,7 @@ class Xnat(RemoteStore):
             with ZipFile(zip_path) as zip_file:
                 zip_file.extractall(expanded_dir)
         except BadZipfile as e:
-            raise ArcanaError(f"Could not unzip file '{zip_path}' ({e})") from e
+            raise FrameTreeError(f"Could not unzip file '{zip_path}' ({e})") from e
         data_path = next(expanded_dir.glob("**/files"))
         return data_path
 
@@ -428,7 +427,7 @@ class Xnat(RemoteStore):
             field_name = path2label(entry.path)
             if not entry.is_derivative and field_name in xrow.fields:
                 field_name
-                raise ArcanaUsageError(
+                raise FrameTreeUsageError(
                     f"Refusing to overwrite non-derivative field {entry.path} in {xrow}"
                 )
             xrow.fields[field_name] = str(value)
@@ -454,7 +453,7 @@ class Xnat(RemoteStore):
             xrow = self.get_xrow(row)
             if not DataEntry.path_is_derivative(path):
                 if row.frequency != Clinical.session:
-                    raise ArcanaUsageError(
+                    raise FrameTreeUsageError(
                         f"Cannot create file-set entry for '{path}': non-derivative "
                         "file-sets (specified by entry paths that don't contain a "
                         "'@' separator) are only allowed in MRSession nodes"
@@ -510,10 +509,10 @@ class Xnat(RemoteStore):
             the fileset to get the checksums for. Used to
             determine the primary file within the resource and change the
             corresponding key in the checksums dictionary to '.' to match
-            the way it is generated locally by Arcana.
+            the way it is generated locally by FrameTree.
         """
         if uri is None:
-            raise ArcanaUsageError(
+            raise FrameTreeUsageError(
                 "Can't retrieve checksums as URI has not been set for {}".format(uri)
             )
         with self.connection:

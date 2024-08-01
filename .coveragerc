@@ -1,0 +1,3 @@
+[run]
+omit = */tests/*, arcana/core/_version.py
+branch = true

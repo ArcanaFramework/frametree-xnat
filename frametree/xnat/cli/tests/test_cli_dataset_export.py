@@ -9,11 +9,11 @@ import pytest
 from fileformats.medimage import DicomSeries
 import medimages4tests.dummy.dicom.mri.t1w.siemens.skyra.syngo_d13c
 import medimages4tests.dummy.dicom.mri.fmap.siemens.skyra.syngo_d13c
-from arcana.core.cli.dataset import export
-from arcana.core.utils.misc import show_cli_trace
-from arcana.xnat import Xnat
-from arcana.bids import Bids
-from arcana.core.utils.misc import add_exc_note
+from frametree.core.cli.dataset import export
+from frametree.core.utils import show_cli_trace
+from frametree.xnat import Xnat
+from frametree.bids import Bids
+from frametree.core.utils import add_exc_note
 from conftest import (
     TestXnatDatasetBlueprint,
     ScanBP,
@@ -40,7 +40,7 @@ def test_bids_export(
     xnat_repository: Xnat,
     cli_runner,
     work_dir: Path,
-    arcana_home: str,
+    frametree_home: str,
     run_prefix: str,
     nifti_sample_dir: Path,
     bids_validator_docker: str,
@@ -66,14 +66,14 @@ def test_bids_export(
             # "timepoint": "session:order",
             "group": r"subject::group(\d+).*",
             "member": r"subject::group\d+member(\d+)",
-        }
+        },
     )
     project_id = run_prefix + "bids_export"
     original = blueprint.make_dataset(
         store=xnat_repository,
         dataset_id=project_id,
         source_data=source_dicom_data,
-        metadata={'authors': ["some.one@an.org", "another.person@another.org"]}
+        metadata={"authors": ["some.one@an.org", "another.person@another.org"]},
     )
     original.add_source(
         name="anat/T1w",
@@ -91,7 +91,7 @@ def test_bids_export(
             "bids",
             bids_dataset_path,
             "--hierarchy",
-            "group,subject,timepoint"
+            "group,subject,timepoint",
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
@@ -113,5 +113,8 @@ def test_bids_export(
             stderr=True,
         ).decode("utf-8")
     except ContainerError as e:
-        add_exc_note(e, f"attempting to run:\n\ndocker run --rm -v {bids_dataset_path}:/data:ro {bids_validator_docker} /data")
+        add_exc_note(
+            e,
+            f"attempting to run:\n\ndocker run --rm -v {bids_dataset_path}:/data:ro {bids_validator_docker} /data",
+        )
     assert bids_success_str in result

@@ -7,15 +7,15 @@ from unittest.mock import patch
 import pytest
 import docker
 import xnat
-from arcana.core.cli.deploy import make_app
-from arcana.xnat.cli.update_release import (
+from pydra2app.core.cli import make_app
+from frametree.xnat.cli.update_release import (
     pull_xnat_images,
     xnat_auth_refresh,
     PULL_IMAGES_XNAT_HOST_KEY,
     PULL_IMAGES_XNAT_USER_KEY,
     PULL_IMAGES_XNAT_PASS_KEY,
 )
-from arcana.core.utils.misc import show_cli_trace
+from frametree.core.utils import show_cli_trace
 
 
 @pytest.mark.xfail(
@@ -42,7 +42,7 @@ def test_pull_xnat_images(
     WRAPPER_VERSION = "1-pullimages"
 
     reverse_command_spec = copy(command_spec)
-    reverse_command_spec["task"] = "arcana.testing.tasks:concatenate_reverse"
+    reverse_command_spec["task"] = "frametree.testing.tasks:concatenate_reverse"
 
     spec_dir = work_dir / DOCKER_ORG
     pkg_path = spec_dir / IMAGE_GROUP_NAME
@@ -66,7 +66,7 @@ def test_pull_xnat_images(
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "docs": {
                 "info_url": "http://concatenate.readthefakedocs.io",
-            }
+            },
         }
 
         with open((pkg_path / name).with_suffix(".yaml"), "w") as f:
