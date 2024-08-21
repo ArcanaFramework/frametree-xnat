@@ -22,7 +22,7 @@ import medimages4tests.dummy.nifti
 import medimages4tests.dummy.dicom.mri.fmap.siemens.skyra.syngo_d13c
 from pydra2app.core.image.base import BaseImage
 from frametree.common import Clinical
-from frametree.core.set import Dataset
+from frametree.core.grid import Grid
 from fileformats.medimage import NiftiGzX, NiftiGz, DicomSeries, NiftiX
 from fileformats.text import Plain as Text
 from fileformats.image import Png
@@ -386,7 +386,7 @@ def access_dataset(
     access_method: str,
     xnat_repository: Xnat,
     xnat_archive_dir: Path,
-) -> Dataset:
+) -> Grid:
     if access_method == "cs":
         proj_dir = xnat_archive_dir / project_id / "arc001"
         store = XnatViaCS(

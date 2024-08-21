@@ -12,7 +12,7 @@ from pydra.utils.hash import hash_object
 from fileformats.generic import File
 from fileformats.field import Text as TextField
 from frametree.common import Clinical
-from frametree.core.set import Dataset
+from frametree.core.grid import Grid
 from frametree.xnat import XnatViaCS
 from frametree.core.serialize import asdict
 
@@ -38,7 +38,7 @@ else:
 # logger.setLevel(logging.INFO)
 
 
-def test_populate_tree(static_dataset: Dataset):
+def test_populate_tree(static_dataset: Grid):
     blueprint = static_dataset.__annotations__["blueprint"]
     for freq in Clinical:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
@@ -54,7 +54,7 @@ def test_populate_tree(static_dataset: Dataset):
         )
 
 
-def test_populate_row(static_dataset: Dataset):
+def test_populate_row(static_dataset: Grid):
     blueprint = static_dataset.__annotations__["blueprint"]
     for row in static_dataset.rows("session"):
         expected_entries = sorted(
@@ -68,7 +68,7 @@ def test_populate_row(static_dataset: Dataset):
         assert sorted(e.path for e in row.entries) == expected_entries
 
 
-def test_get(static_dataset: Dataset, caplog):
+def test_get(static_dataset: Grid, caplog):
     blueprint = static_dataset.__annotations__["blueprint"]
     expected_files = {}
     for scan_bp in blueprint.scans:
@@ -107,7 +107,7 @@ def test_get(static_dataset: Dataset, caplog):
     assert f"{method_str} access" in caplog.text.lower()
 
 
-def test_post(dataset: Dataset, source_data: Path, caplog):
+def test_post(dataset: Grid, source_data: Path, caplog):
     blueprint = dataset.__annotations__["blueprint"]
     all_checksums = {}
     for deriv_bp in blueprint.derivatives:
@@ -151,17 +151,17 @@ def test_post(dataset: Dataset, source_data: Path, caplog):
         check_inserted()
 
 
-def test_dataset_definition_roundtrip(simple_dataset: Dataset):
+def test_grid_roundtrip(simple_dataset: Grid):
     definition = asdict(simple_dataset, omit=["store", "name"])
     definition["store-version"] = "1.0.0"
 
     data_store = simple_dataset.store
 
     with data_store.connection:
-        data_store.save_dataset_definition(
+        data_store.save_grid(
             dataset_id=simple_dataset.id, definition=definition, name="test_dataset"
         )
-        reloaded_definition = data_store.load_dataset_definition(
+        reloaded_definition = data_store.load_grid(
             dataset_id=simple_dataset.id, name="test_dataset"
         )
     assert definition == reloaded_definition
@@ -169,7 +169,7 @@ def test_dataset_definition_roundtrip(simple_dataset: Dataset):
 
 # We use __file__ here as we just need any old file and can guarantee it exists
 @pytest.mark.parametrize("datatype,value", [(File, __file__), (TextField, "value")])
-def test_provenance_roundtrip(datatype: type, value: str, simple_dataset: Dataset):
+def test_provenance_roundtrip(datatype: type, value: str, simple_dataset: Grid):
     provenance = {"a": 1, "b": [1, 2, 3], "c": {"x": True, "y": "foo", "z": "bar"}}
     data_store = simple_dataset.store
 

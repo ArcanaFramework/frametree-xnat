@@ -31,7 +31,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
 
     def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None):
         logger.debug("Making entries in %s row: %s", row, self.scans)
-        xrow = row.dataset.store.get_xrow(row)
+        xrow = row.grid.store.get_xrow(row)
         xclasses = xrow.xnat_session.classes
         for scan_id, scan_bp in enumerate(self.scans, start=1):
             xscan = xclasses.MrScanData(id=scan_id, type=scan_bp.name, parent=xrow)

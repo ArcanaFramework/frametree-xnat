@@ -156,7 +156,7 @@ class Xnat(RemoteStore):
                     checksums=self.get_checksums(uri),
                 )
 
-    def save_dataset_definition(
+    def save_grid_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
         """Save definition of dataset within the store
@@ -166,7 +166,7 @@ class Xnat(RemoteStore):
         dataset_id: str
             The ID/path of the dataset within the store
         definition: ty.Dict[str, Any]
-            A dictionary containing the dct Dataset to be saved. The
+            A dictionary containing the dct Grid to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
         name: str
@@ -187,9 +187,7 @@ class Xnat(RemoteStore):
                 json.dump(definition, f, indent="    ")
             xresource.upload(str(definition_file), name + ".json", overwrite=True)
 
-    def load_dataset_definition(
-        self, dataset_id: str, name: str
-    ) -> ty.Dict[str, ty.Any]:
+    def load_grid(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters
@@ -203,7 +201,7 @@ class Xnat(RemoteStore):
         Returns
         -------
         definition: ty.Dict[str, Any]
-            A dct Dataset object that was saved in the data store
+            A dct Grid object that was saved in the data store
         """
         with self.connection:
             xproject = self.connection.projects[dataset_id]
@@ -557,8 +555,8 @@ class Xnat(RemoteStore):
             The row to get the corresponding XNAT row for
         """
         with self.connection:
-            xproject = self.connection.projects[row.dataset.id]
-            if row.frequency == Clinical.dataset:
+            xproject = self.connection.projects[row.grid.id]
+            if row.frequency == Clinical.grid:
                 xrow = xproject
             elif row.frequency == Clinical.subject:
                 xrow = xproject.subjects[row.frequency_id("subject")]
