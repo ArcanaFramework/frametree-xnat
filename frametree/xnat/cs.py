@@ -10,7 +10,7 @@ from pathlib import Path
 import attrs
 from fileformats.core import FileSet
 from frametree.common import Clinical
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
 from frametree.core.exceptions import FrameTreeNoDirectXnatMountException
@@ -52,7 +52,7 @@ class XnatViaCS(Xnat):
     WORK_MOUNT = Path("/work")
     CACHE_DIR = Path("/cache")
 
-    row_frequency: DataSpace = attrs.field(default=Clinical.session)
+    row_frequency: Axes = attrs.field(default=Clinical.session)
     row_id: str = attrs.field(default=None)
     input_mount: Path = attrs.field(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attrs.field(default=OUTPUT_MOUNT, converter=Path)

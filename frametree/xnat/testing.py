@@ -4,7 +4,7 @@ import logging
 import tempfile
 import attrs
 from frametree.common import Clinical
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 from frametree.core.row import DataRow
 from frametree.testing.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 
@@ -26,7 +26,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
 
     # Overwrite attributes in core blueprint class
     space: type = Clinical
-    hierarchy: ty.List[DataSpace] = ["subject", "session"]
+    hierarchy: ty.List[Axes] = ["subject", "session"]
     filesets: ty.Optional[ty.List[str]] = None
 
     def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None):

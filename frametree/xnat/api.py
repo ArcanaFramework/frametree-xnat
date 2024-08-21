@@ -70,7 +70,7 @@ class Xnat(RemoteStore):
     PROV_RESOURCE = "PROVENANCE"
 
     #############################
-    # DataStore implementations #
+    # Store implementations #
     #############################
 
     def populate_tree(self, tree: DataTree):
