@@ -402,7 +402,7 @@ def access_dataset(
         store = xnat_repository
     else:
         assert False, f"unrecognised access method {access_method}"
-    return store.load_dataset(project_id, name="")
+    return store.load_frameset(project_id, name="")
 
 
 @pytest.fixture(scope="session")
