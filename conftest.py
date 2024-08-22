@@ -22,7 +22,7 @@ import medimages4tests.dummy.nifti
 import medimages4tests.dummy.dicom.mri.fmap.siemens.skyra.syngo_d13c
 from pydra2app.core.image.base import BaseImage
 from frametree.common import Clinical
-from frametree.core.grid import Grid
+from frametree.core.frameset import FrameSet
 from fileformats.medimage import NiftiGzX, NiftiGz, DicomSeries, NiftiX
 from fileformats.text import Plain as Text
 from fileformats.image import Png
@@ -135,7 +135,7 @@ def frametree_home(work_dir):
 
 TEST_XNAT_DATASET_BLUEPRINTS = {
     "basic": TestXnatDatasetBlueprint(  # dataset name
-        dim_lengths=[1, 1, 3],  # number of timepoints, groups and members respectively
+        dim_lengths=[1, 1, 3],  # number of visits, groups and members respectively
         scans=[
             ScanBP(
                 name="scan1",  # scan type (ID is index)
@@ -196,7 +196,7 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
         derivatives=[
             FileBP(
                 path="deriv1",
-                row_frequency=Clinical.timepoint,
+                row_frequency=Clinical.visit,
                 datatype=Text,
                 filenames=["file.txt"],
             ),
@@ -208,20 +208,20 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
             ),
             FileBP(
                 path="deriv3",
-                row_frequency=Clinical.batch,
+                row_frequency=Clinical.groupedvisit,
                 datatype=Directory,
                 filenames=["dir"],
             ),
             FileBP(
                 path="deriv4",
-                row_frequency=Clinical.dataset,
+                row_frequency=Clinical.constant,
                 datatype=Text,
                 filenames=["file.txt"],
             ),
         ],
     ),
     "multi": TestXnatDatasetBlueprint(  # dataset name
-        dim_lengths=[2, 2, 2],  # number of timepoints, groups and members respectively
+        dim_lengths=[2, 2, 2],  # number of visits, groups and members respectively
         scans=[
             ScanBP(
                 name="scan1",
@@ -231,7 +231,7 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
         id_patterns={
             "group": r"subject::group(\d+)member\d+",
             "member": r"subject::group\d+member(\d+)",
-            "timepoint": r"session::timepoint(\d+).*",
+            "visit": r"session::visit(\d+).*",
         },
         derivatives=[
             FileBP(
@@ -248,7 +248,7 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
             ),
             FileBP(
                 path="deriv3",
-                row_frequency=Clinical.timepoint,
+                row_frequency=Clinical.visit,
                 datatype=Directory,
                 filenames=["doubledir"],
             ),
@@ -260,19 +260,19 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
             ),
             FileBP(
                 path="deriv5",
-                row_frequency=Clinical.dataset,
+                row_frequency=Clinical.constant,
                 datatype=Text,
                 filenames=["file.txt"],
             ),
             FileBP(
                 path="deriv6",
-                row_frequency=Clinical.batch,
+                row_frequency=Clinical.groupedvisit,
                 datatype=Text,
                 filenames=["file.txt"],
             ),
             FileBP(
                 path="deriv7",
-                row_frequency=Clinical.matchedpoint,
+                row_frequency=Clinical.matchedvisit,
                 datatype=Text,
                 filenames=["file.txt"],
             ),
@@ -386,7 +386,7 @@ def access_dataset(
     access_method: str,
     xnat_repository: Xnat,
     xnat_archive_dir: Path,
-) -> Grid:
+) -> FrameSet:
     if access_method == "cs":
         proj_dir = xnat_archive_dir / project_id / "arc001"
         store = XnatViaCS(
@@ -394,7 +394,7 @@ def access_dataset(
             user=xnat_repository.user,
             password=xnat_repository.password,
             cache_dir=xnat_repository.cache_dir,
-            row_frequency=Clinical.dataset,
+            row_frequency=Clinical.constant,
             input_mount=proj_dir,
             output_mount=Path(mkdtemp()),
         )

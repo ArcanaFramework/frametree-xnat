@@ -25,13 +25,13 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
     scans: ty.List[ScanBlueprint]
 
     # Overwrite attributes in core blueprint class
-    space: type = Clinical
+    axes: type = Clinical
     hierarchy: ty.List[Axes] = ["subject", "session"]
     filesets: ty.Optional[ty.List[str]] = None
 
     def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None):
         logger.debug("Making entries in %s row: %s", row, self.scans)
-        xrow = row.grid.store.get_xrow(row)
+        xrow = row.frameset.store.get_xrow(row)
         xclasses = xrow.xnat_session.classes
         for scan_id, scan_bp in enumerate(self.scans, start=1):
             xscan = xclasses.MrScanData(id=scan_id, type=scan_bp.name, parent=xrow)

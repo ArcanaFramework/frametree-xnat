@@ -64,9 +64,9 @@ class Xnat(RemoteStore):
     verify_ssl: bool = True
 
     depth = 2
-    DEFAULT_SPACE = Clinical
+    DEFAULT_AXES = Clinical
     DEFAULT_HIERARCHY = ("subject", "session")
-    # DEFAULT_ID_PATTERNS = (("timepoint", "session:order"),)
+    # DEFAULT_ID_PATTERNS = (("visit", "session:order"),)
     PROV_RESOURCE = "PROVENANCE"
 
     #############################
@@ -166,7 +166,7 @@ class Xnat(RemoteStore):
         dataset_id: str
             The ID/path of the dataset within the store
         definition: ty.Dict[str, Any]
-            A dictionary containing the dct Grid to be saved. The
+            A dictionary containing the dct FrameSet to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
         name: str
@@ -187,7 +187,7 @@ class Xnat(RemoteStore):
                 json.dump(definition, f, indent="    ")
             xresource.upload(str(definition_file), name + ".json", overwrite=True)
 
-    def load_grid(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+    def load_frameset(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters
@@ -201,7 +201,7 @@ class Xnat(RemoteStore):
         Returns
         -------
         definition: ty.Dict[str, Any]
-            A dct Grid object that was saved in the data store
+            A dct FrameSet object that was saved in the data store
         """
         with self.connection:
             xproject = self.connection.projects[dataset_id]
@@ -310,7 +310,7 @@ class Xnat(RemoteStore):
         leaves : list[tuple[str, ...]]
                         list of IDs for each leaf node to be added to the dataset. The IDs for each
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
-            for a hierarchy of [subject, timepoint] ->
+            for a hierarchy of [subject, visit] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         **kwargs
             kwargs are ignored
@@ -555,8 +555,8 @@ class Xnat(RemoteStore):
             The row to get the corresponding XNAT row for
         """
         with self.connection:
-            xproject = self.connection.projects[row.grid.id]
-            if row.frequency == Clinical.grid:
+            xproject = self.connection.projects[row.frameset.id]
+            if row.frequency == Clinical.set:
                 xrow = xproject
             elif row.frequency == Clinical.subject:
                 xrow = xproject.subjects[row.frequency_id("subject")]

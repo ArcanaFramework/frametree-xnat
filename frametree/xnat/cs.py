@@ -147,18 +147,18 @@ class XnatViaCS(Xnat):
     def get_input_mount(self, row: DataRow) -> Path:
         if self.row_frequency == row.frequency:
             return self.input_mount
-        elif self.row_frequency == Clinical.grid and row.frequency == Clinical.session:
+        elif self.row_frequency == Clinical.set and row.frequency == Clinical.session:
             return self.input_mount / row.id
         else:
             raise FrameTreeNoDirectXnatMountException
 
     def _make_uri(self, row: DataRow):
-        uri = "/data/archive/projects/" + row.grid.id
+        uri = "/data/archive/projects/" + row.frameset.id
         if row.frequency == Clinical.session:
             uri += "/experiments/" + row.id
         elif row.frequency == Clinical.subject:
             uri += "/subjects/" + row.id
-        elif row.frequency != Clinical.grid:
+        elif row.frequency != Clinical.set:
             uri += "/subjects/" + self.make_row_name(row)
         return uri
 
