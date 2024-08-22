@@ -156,7 +156,7 @@ class Xnat(RemoteStore):
                     checksums=self.get_checksums(uri),
                 )
 
-    def save_grid_definition(
+    def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
         """Save definition of dataset within the store
@@ -187,7 +187,9 @@ class Xnat(RemoteStore):
                 json.dump(definition, f, indent="    ")
             xresource.upload(str(definition_file), name + ".json", overwrite=True)
 
-    def load_frameset(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+    def load_frameset_definition(
+        self, dataset_id: str, name: str
+    ) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters
@@ -556,7 +558,7 @@ class Xnat(RemoteStore):
         """
         with self.connection:
             xproject = self.connection.projects[row.frameset.id]
-            if row.frequency == Clinical.set:
+            if row.frequency == Clinical.constant:
                 xrow = xproject
             elif row.frequency == Clinical.subject:
                 xrow = xproject.subjects[row.frequency_id("subject")]
