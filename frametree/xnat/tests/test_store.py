@@ -158,7 +158,7 @@ def test_grid_roundtrip(simple_dataset: FrameSet):
     data_store = simple_dataset.store
 
     with data_store.connection:
-        data_store.save_frameset(
+        data_store.save_frameset_definition(
             dataset_id=simple_dataset.id, definition=definition, name="test_dataset"
         )
         reloaded_definition = data_store.load_frameset(

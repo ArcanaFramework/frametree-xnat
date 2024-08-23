@@ -20,7 +20,7 @@ from imageio.core.fetching import get_remote_file
 import xnat4tests
 import medimages4tests.dummy.nifti
 import medimages4tests.dummy.dicom.mri.fmap.siemens.skyra.syngo_d13c
-from pydra2app.core.image.base import BaseImage
+from pipeline2app.core.image.base import BaseImage
 from frametree.common import Clinical
 from frametree.core.frameset import FrameSet
 from fileformats.medimage import NiftiGzX, NiftiGz, DicomSeries, NiftiX
