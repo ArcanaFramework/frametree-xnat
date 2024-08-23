@@ -49,7 +49,7 @@ test = [
     "fileformats-testing",
     "frametree-bids",
     "medimages4tests >=0.3",
-    "pydra2app",
+    "pipeline2app",
     "pytest >=5.4.3",
     "pytest-cov >=2.12.1",
     "pytest-env >=0.6.2",
