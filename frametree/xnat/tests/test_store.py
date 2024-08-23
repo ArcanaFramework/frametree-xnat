@@ -151,7 +151,7 @@ def test_post(dataset: FrameSet, source_data: Path, caplog):
         check_inserted()
 
 
-def test_grid_roundtrip(simple_dataset: FrameSet):
+def test_frameset_roundtrip(simple_dataset: FrameSet):
     definition = asdict(simple_dataset, omit=["store", "name"])
     definition["store-version"] = "1.0.0"
 
@@ -161,7 +161,7 @@ def test_grid_roundtrip(simple_dataset: FrameSet):
         data_store.save_frameset_definition(
             dataset_id=simple_dataset.id, definition=definition, name="test_dataset"
         )
-        reloaded_definition = data_store.load_frameset(
+        reloaded_definition = data_store.load_frameset_definition(
             dataset_id=simple_dataset.id, name="test_dataset"
         )
     assert definition == reloaded_definition
