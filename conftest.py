@@ -298,7 +298,7 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
         ],
         derivatives=[
             FileBP(
-                path="concatenated",
+                path="concatenated_file",
                 row_frequency=Clinical.session,
                 datatype=Text,
                 filenames=["concatenated.txt"],
@@ -526,7 +526,7 @@ def command_spec():
             },
         },
         "outputs": {
-            "concatenated": {
+            "concatenated_file": {
                 "datatype": "text/text-file",
                 "field": "out_file",
                 "help": "an output file",
