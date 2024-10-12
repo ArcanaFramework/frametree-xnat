@@ -336,7 +336,9 @@ def static_dataset(
         name="",
     )
     logger.debug("accessing dataset at %s", project_id)
-    return access_dataset(project_id, access_method, xnat_repository, xnat_archive_dir)
+    return access_dataset(
+        project_id, access_method, xnat_repository, xnat_archive_dir, run_prefix
+    )
 
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope="function")
@@ -363,7 +365,9 @@ def dataset(
         source_data=source_data,
         name="",
     )
-    return access_dataset(project_id, access_method, xnat_repository, xnat_archive_dir)
+    return access_dataset(
+        project_id, access_method, xnat_repository, xnat_archive_dir, run_prefix
+    )
 
 
 @pytest.fixture
@@ -386,6 +390,7 @@ def access_dataset(
     access_method: str,
     xnat_repository: Xnat,
     xnat_archive_dir: Path,
+    run_prefix: str,
 ) -> FrameSet:
     if access_method == "cs":
         proj_dir = xnat_archive_dir / project_id / "arc001"
@@ -398,6 +403,7 @@ def access_dataset(
             input_mount=proj_dir,
             output_mount=Path(mkdtemp()),
         )
+        store.save(name=f"testxnatcs{run_prefix}")
     elif access_method == "api":
         store = xnat_repository
     else:
@@ -422,7 +428,7 @@ def xnat_archive_dir(xnat_root_dir):
 
 
 @pytest.fixture(scope="session")
-def xnat_repository(run_prefix, xnat4tests_config):
+def xnat_repository(run_prefix, xnat4tests_config, frametree_home):
 
     xnat4tests.start_xnat()
 
@@ -432,6 +438,8 @@ def xnat_repository(run_prefix, xnat4tests_config):
         password=xnat4tests_config.xnat_password,
         cache_dir=mkdtemp(),
     )
+
+    repository.save(name="testxnat")
 
     # Stash a project prefix in the repository object
     repository.__annotations__["run_prefix"] = run_prefix
