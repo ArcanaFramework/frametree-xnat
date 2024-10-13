@@ -121,9 +121,9 @@ def pkg_dir():
     return PKG_DIR
 
 
-@pytest.fixture
-def frametree_home(work_dir):
-    frametree_home = work_dir / "frametree-home"
+@pytest.fixture(scope="session")
+def frametree_home() -> Path:
+    frametree_home = Path(tempfile.mkdtemp()) / "frametree-home"
     with patch.dict(os.environ, {"FRAMETREE_HOME": str(frametree_home)}):
         yield frametree_home
 
