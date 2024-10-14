@@ -14,8 +14,8 @@ from fileformats.core import FileSet, Field
 from fileformats.medimage import DicomSeries
 from fileformats.core.exceptions import FormatRecognitionError
 from frametree.core.utils import (
-    path2varname,
-    varname2path,
+    path2label,
+    label2path,
 )
 from frametree.core.store.remote import (
     RemoteStore,
@@ -596,7 +596,7 @@ class Xnat(RemoteStore):
         }
         return hdr
 
-    def make_row_name(self, row):
+    def make_row_name(self, row: DataRow) -> str:
         # Create a "subject" to hold the non-standard row (i.e. not
         # a project, subject or session row)
         if row.id is None:
@@ -642,14 +642,3 @@ class Xnat(RemoteStore):
     def _get_resource_uri(cls, xresource):
         """Replaces the resource ID with the resource label"""
         return re.match(r"(.*/)[^/]+", xresource.uri).group(1) + xresource.label
-
-
-def path2label(path: str):
-    return path2varname(path.rstrip("@"))
-
-
-def label2path(label: str):
-    path = varname2path(label)
-    if "@" not in path:
-        path += "@"
-    return path

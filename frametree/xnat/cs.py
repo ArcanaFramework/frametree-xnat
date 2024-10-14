@@ -9,12 +9,13 @@ import logging
 from pathlib import Path
 import attrs
 from fileformats.core import FileSet
+from frametree.core.utils import path2label
 from frametree.common import Clinical
 from frametree.core.axes import Axes
 from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
 from frametree.core.exceptions import FrameTreeNoDirectXnatMountException
-from .api import Xnat, path2label
+from .api import Xnat
 
 logger = logging.getLogger("frametree")
 
@@ -59,22 +60,22 @@ class XnatViaCS(Xnat):
     server: str = attrs.field()
     user: str = attrs.field()
     password: str = attrs.field()
-    cache_dir: str = attrs.field(default=CACHE_DIR, converter=Path)
+    cache_dir: Path = attrs.field(default=CACHE_DIR, converter=Path)
 
     alias = "xnat_via_cs"
 
     @server.default
-    def server_default(self):
+    def server_default(self) -> str:
         server = os.environ["XNAT_HOST"]
         logger.debug("XNAT (via CS) server found %s", server)
         return server
 
     @user.default
-    def user_default(self):
+    def user_default(self) -> str:
         return os.environ["XNAT_USER"]
 
     @password.default
-    def password_default(self):
+    def password_default(self) -> str:
         return os.environ["XNAT_PASS"]
 
     def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
@@ -84,7 +85,7 @@ class XnatViaCS(Xnat):
             input_mount = self.get_input_mount(entry.row)
         except FrameTreeNoDirectXnatMountException:
             # Fallback to API access
-            return super().get_fileset(entry, datatype)
+            return super().get_fileset(entry, datatype)  # type: ignore[no-any-return]
         logger.info(
             "Getting %s from %s:%s row via direct access to archive directory",
             entry.path,
@@ -95,20 +96,23 @@ class XnatViaCS(Xnat):
             # entry is in input mount
             resource_path = self.entry_fspath(entry)
         else:
-            path = re.match(
+            match = re.match(
                 r"/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/"
                 r"(?:subjects/[a-zA-Z0-9\-_]+/)?"
                 r"(?:experiments/[a-zA-Z0-9\-_]+/)?(?P<path>.*)$",
                 entry.uri,
-            ).group("path")
+            )
+            if match is None:
+                raise ValueError(f"Invalid URI in {self}: {entry.uri}")
+            path = match.group("path")
             if "scans" in path:
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-        fspaths = list(
+        fspaths = [
             p for p in resource_path.iterdir() if not p.name.endswith("_catalog.xml")
-        )
-        return datatype(fspaths)
+        ]
+        return datatype(fspaths)  # type: ignore[no-any-return]
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         if not entry.is_derivative:
@@ -129,7 +133,7 @@ class XnatViaCS(Xnat):
         return cached
 
     def post_fileset(
-        self, fileset, path: str, datatype: type, row: DataRow
+        self, fileset: FileSet, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
         uri = self._make_uri(row) + "/RESOURCES/" + path
         entry = row.add_entry(path=path, datatype=datatype, uri=uri)
@@ -151,12 +155,12 @@ class XnatViaCS(Xnat):
             self.row_frequency == Clinical.constant
             and row.frequency == Clinical.session
         ):
-            return self.input_mount / row.id
+            return self.input_mount / row.id  # type: ignore[no-any-return]
         else:
             raise FrameTreeNoDirectXnatMountException
 
-    def _make_uri(self, row: DataRow):
-        uri = "/data/archive/projects/" + row.frameset.id
+    def _make_uri(self, row: DataRow) -> str:
+        uri: str = "/data/archive/projects/" + row.frameset.id
         if row.frequency == Clinical.session:
             uri += "/experiments/" + row.id
         elif row.frequency == Clinical.subject:
