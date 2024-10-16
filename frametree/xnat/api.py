@@ -26,6 +26,7 @@ from frametree.core.exceptions import (
     FrameTreeUsageError,
 )
 from frametree.core.serialize import asdict
+from frametree.core.axes import Axes
 from frametree.core.tree import DataTree
 from frametree.core.entry import DataEntry
 from frametree.common import Clinical
@@ -73,7 +74,7 @@ class Xnat(RemoteStore):
     # Store implementations #
     #############################
 
-    def populate_tree(self, tree: DataTree):
+    def populate_tree(self, tree: DataTree) -> None:
         """
         Populates the nodes of the data tree with those found in the dataset
 
@@ -104,7 +105,7 @@ class Xnat(RemoteStore):
                     }
                     tree.add_leaf([xsubject.label, xsess.label], metadata=metadata)
 
-    def populate_row(self, row: DataRow):
+    def populate_row(self, row: DataRow) -> None:
         """
         Populate a row with all data entries found in the corresponding node in the data
         store (e.g. files within a directory, scans within an XNAT session).
@@ -158,7 +159,7 @@ class Xnat(RemoteStore):
 
     def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
-    ):
+    ) -> None:
         """Save definition of dataset within the store
 
         Parameters
@@ -249,7 +250,7 @@ class Xnat(RemoteStore):
             kwargs["password"] = self.password
         return xnat.connect(server=self.server, verify=self.verify_ssl, **kwargs)
 
-    def disconnect(self, session: xnat.XNATSession):
+    def disconnect(self, session: xnat.XNATSession) -> None:
         """
         Close the XnatPy session object
 
@@ -260,7 +261,9 @@ class Xnat(RemoteStore):
         """
         session.disconnect()
 
-    def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
+    def put_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ) -> None:
         """Stores provenance information for a given data item in the store
 
         Parameters
@@ -301,7 +304,14 @@ class Xnat(RemoteStore):
             provenance = json.load(f)
         return provenance
 
-    def create_data_tree(self, id: str, leaves: ty.List[ty.Tuple[str, ...]], **kwargs):
+    def create_data_tree(
+        self,
+        id: str,
+        leaves: ty.List[ty.Tuple[str, ...]],
+        hierarchy: ty.List[str],
+        axes: ty.Type[Axes],
+        **kwargs: ty.Any,
+    ) -> None:
         """Creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 
@@ -369,7 +379,7 @@ class Xnat(RemoteStore):
         data_path = next(expanded_dir.glob("**/files"))
         return data_path
 
-    def upload_files(self, cache_path: Path, entry: DataEntry):
+    def upload_files(self, cache_path: Path, entry: DataEntry) -> None:
         """Upload all files contained within `input_dir` to the specified entry in the
         data store
 
@@ -414,7 +424,7 @@ class Xnat(RemoteStore):
         self,
         value: ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]],
         entry: DataEntry,
-    ):
+    ) -> None:
         """Store the value for a field in the XNAT repository
 
         Parameters
@@ -484,7 +494,7 @@ class Xnat(RemoteStore):
             )
         return entry
 
-    def create_field_entry(self, path: str, datatype: type, row: DataRow):
+    def create_field_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
         """
         Creates a new resource entry to store a field
 
@@ -499,7 +509,7 @@ class Xnat(RemoteStore):
         """
         return row.add_entry(path, datatype, uri=None)
 
-    def get_checksums(self, uri: str):
+    def get_checksums(self, uri: str) -> ty.Dict[str, str]:
         """
         Downloads the MD5 digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to
@@ -512,6 +522,11 @@ class Xnat(RemoteStore):
             determine the primary file within the resource and change the
             corresponding key in the checksums dictionary to '.' to match
             the way it is generated locally by FrameTree.
+
+        Returns
+        -------
+        checksums: dict
+            a dictionary of checksums for the files in the fileset
         """
         if uri is None:
             raise FrameTreeUsageError(
@@ -546,7 +561,7 @@ class Xnat(RemoteStore):
     # Helper methods #
     ##################
 
-    def get_xrow(self, row: DataRow):
+    def get_xrow(self, row: DataRow) -> "xnat.ResourceCatalog":
         """
         Returns the XNAT session and cache dir corresponding to the provided
         row
@@ -573,8 +588,8 @@ class Xnat(RemoteStore):
                 )
             return xrow
 
-    def get_dicom_header(self, uri: str):
-        def convert(val, code):
+    def get_dicom_header(self, uri: str) -> ty.Dict[str, ty.Any]:
+        def convert(val: ty.Any, code: str) -> ty.Any:
             if code == "TM":
                 try:
                     val = float(val)
@@ -607,7 +622,9 @@ class Xnat(RemoteStore):
             id_str = "_" + str(row.id)
         return f"__{row.frequency}{id_str}__"
 
-    def _provenance_location(self, entry: DataEntry, create_resource: bool = False):
+    def _provenance_location(
+        self, entry: DataEntry, create_resource: bool = False
+    ) -> ty.Tuple["xnat.ResourceCatalog", str, Path]:
         xrow = self.get_xrow(entry.row)
         fname = path2label(entry.path) + ".json"
         uri = f"{xrow.uri}/resources/{self.PROV_RESOURCE}/files/{fname}"
@@ -624,21 +641,23 @@ class Xnat(RemoteStore):
                 raise
         return xresource, uri, cache_path
 
-    def _encrypt_credentials(self, serialised):
+    def _encrypt_credentials(self, serialised: ty.Dict[str, ty.Any]) -> None:
         with self.connection:
             (
                 serialised["user"],
                 serialised["password"],
             ) = self.connection.services.issue_token()
 
-    def asdict(self, **kwargs):
+    def asdict(self, **kwargs: ty.Any) -> ty.Dict[str, ty.Any]:
         # Call asdict utility method with 'ignore_instance_method' to avoid
         # infinite recursion
         dct = asdict(self, **kwargs)
         self._encrypt_credentials(dct)
-        return dct
+        return dct  # type: ignore[no-any-return]
 
     @classmethod
-    def _get_resource_uri(cls, xresource):
+    def _get_resource_uri(cls, xresource: "xnat.ResourceCatalog") -> str:
         """Replaces the resource ID with the resource label"""
-        return re.match(r"(.*/)[^/]+", xresource.uri).group(1) + xresource.label
+        return (  # type: ignore[no-any-return]
+            re.match(r"(.*/)[^/]+", xresource.uri).group(1) + xresource.label  # type: ignore[union-attr]
+        )
