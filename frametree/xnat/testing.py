@@ -11,6 +11,8 @@ from frametree.testing.blueprint import TestDatasetBlueprint, FileSetEntryBluepr
 
 logger = logging.getLogger("frametree")
 
+__all__ = ["ScanBlueprint", "TestXnatDatasetBlueprint"]
+
 
 @attrs.define
 class ScanBlueprint:
@@ -20,7 +22,7 @@ class ScanBlueprint:
 
 
 @attrs.define(slots=False, kw_only=True)
-class TestXnatDatasetBlueprint(TestDatasetBlueprint):
+class TestXnatDatasetBlueprint(TestDatasetBlueprint):  # type: ignore[misc]
 
     scans: ty.List[ScanBlueprint]
 
@@ -29,7 +31,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
     hierarchy: ty.List[Axes] = ["subject", "session"]
     filesets: ty.Optional[ty.List[str]] = None
 
-    def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None):
+    def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None) -> None:
         logger.debug("Making entries in %s row: %s", row, self.scans)
         xrow = row.frameset.store.get_xrow(row)
         xclasses = xrow.xnat_session.classes
@@ -47,3 +49,6 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):
                 )
                 item.copy(tmp_dir)
                 xresource.upload_dir(tmp_dir)
+
+
+__all__ = ["TestXnatDatasetBlueprint", "ScanBlueprint"]

@@ -2,6 +2,7 @@
 import os
 import logging
 import sys
+import typing as ty
 from tempfile import mkdtemp
 from unittest.mock import patch
 import json
@@ -15,7 +16,7 @@ import numpy
 import docker
 import random
 import nibabel
-from click.testing import CliRunner
+from click.testing import CliRunner, Result as CliResult
 from imageio.core.fetching import get_remote_file
 import xnat4tests
 import medimages4tests.dummy.nifti
@@ -31,9 +32,9 @@ from fileformats.generic import Directory
 from frametree.xnat.api import Xnat
 from frametree.xnat.testing import (
     TestXnatDatasetBlueprint,
-    FileSetEntryBlueprint as FileBP,
     ScanBlueprint as ScanBP,
 )
+from frametree.testing.blueprint import FileSetEntryBlueprint as FileBP
 from frametree.xnat.cs import XnatViaCS
 
 try:
@@ -61,7 +62,7 @@ else:
 
 
 @pytest.fixture
-def catch_cli_exceptions():
+def catch_cli_exceptions() -> bool:
     return CATCH_CLI_EXCEPTIONS
 
 
@@ -90,16 +91,18 @@ logger.addHandler(sch)
 
 
 @pytest.fixture(scope="session")
-def run_prefix():
+def run_prefix() -> str:
     "A datetime string used to avoid stale data left over from previous tests"
     return datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")
 
 
 @pytest.fixture
-def cli_runner(catch_cli_exceptions):
-    def invoke(*args, catch_exceptions=catch_cli_exceptions, **kwargs):
+def cli_runner(catch_cli_exceptions: bool) -> ty.Callable[..., ty.Any]:
+    def invoke(
+        *args: ty.Any, catch_exceptions: bool = catch_cli_exceptions, **kwargs: ty.Any
+    ) -> CliResult:
         runner = CliRunner()
-        result = runner.invoke(*args, catch_exceptions=catch_exceptions, **kwargs)
+        result = runner.invoke(*args, catch_exceptions=catch_exceptions, **kwargs)  # type: ignore[misc]
         return result
 
     return invoke
@@ -112,18 +115,18 @@ def work_dir() -> Path:
 
 
 @pytest.fixture(scope="session")
-def build_cache_dir():
+def build_cache_dir() -> Path:
     return Path(mkdtemp())
 
 
 @pytest.fixture(scope="session")
-def pkg_dir():
+def pkg_dir() -> Path:
     return PKG_DIR
 
 
-@pytest.fixture
-def frametree_home(work_dir):
-    frametree_home = work_dir / "frametree-home"
+@pytest.fixture(scope="session")
+def frametree_home() -> ty.Generator[Path, None, None]:
+    frametree_home = Path(tempfile.mkdtemp()) / "frametree-home"
     with patch.dict(os.environ, {"FRAMETREE_HOME": str(frametree_home)}):
         yield frametree_home
 
@@ -298,7 +301,7 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
         ],
         derivatives=[
             FileBP(
-                path="concatenated",
+                path="concatenated_file",
                 row_frequency=Clinical.session,
                 datatype=Text,
                 filenames=["concatenated.txt"],
@@ -308,7 +311,14 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
 }
 
 GOOD_DATASETS = ["basic.api", "multi.api", "basic.cs", "multi.cs"]
-MUTABLE_DATASETS = ["basic.api", "multi.api", "basic.cs", "multi.cs"]
+MUTABLE_DATASETS = [
+    "basic.api",
+    "multi.api",
+    "basic.cs",
+    "multi.cs",
+    "basic.cs_internal",
+    "multi.cs_internal",
+]
 
 # ------------------------------------
 # Pytest fixtures and helper functions
@@ -321,8 +331,8 @@ def static_dataset(
     xnat_archive_dir: Path,
     source_data: Path,
     run_prefix: str,
-    request,
-):
+    request: pytest.FixtureRequest,
+) -> FrameSet:
     """Creates a static dataset to can be reused between unittests and save setup
     times"""
     dataset_id, access_method = request.param.split(".")
@@ -336,7 +346,9 @@ def static_dataset(
         name="",
     )
     logger.debug("accessing dataset at %s", project_id)
-    return access_dataset(project_id, access_method, xnat_repository, xnat_archive_dir)
+    return access_dataset(
+        project_id, access_method, xnat_repository, xnat_archive_dir, run_prefix
+    )
 
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope="function")
@@ -345,8 +357,8 @@ def dataset(
     xnat_archive_dir: Path,
     source_data: Path,
     run_prefix: str,
-    request,
-):
+    request: pytest.FixtureRequest,
+) -> FrameSet:
     """Creates a dataset that can be mutated (as its name is unique to the function)"""
     dataset_id, access_method = request.param.split(".")
     blueprint = TEST_XNAT_DATASET_BLUEPRINTS[dataset_id]
@@ -363,11 +375,13 @@ def dataset(
         source_data=source_data,
         name="",
     )
-    return access_dataset(project_id, access_method, xnat_repository, xnat_archive_dir)
+    return access_dataset(
+        project_id, access_method, xnat_repository, xnat_archive_dir, run_prefix
+    )
 
 
 @pytest.fixture
-def simple_dataset(xnat_repository, work_dir, run_prefix):
+def simple_dataset(xnat_repository: Xnat, work_dir: Path, run_prefix: str) -> FrameSet:
     blueprint = TestXnatDatasetBlueprint(
         dim_lengths=[1, 1, 1],
         scans=[
@@ -386,9 +400,10 @@ def access_dataset(
     access_method: str,
     xnat_repository: Xnat,
     xnat_archive_dir: Path,
+    run_prefix: str,
 ) -> FrameSet:
-    if access_method == "cs":
-        proj_dir = xnat_archive_dir / project_id / "arc001"
+    if access_method.startswith("cs"):
+        proj_dir = xnat_archive_dir / project_id
         store = XnatViaCS(
             server=xnat_repository.server,
             user=xnat_repository.user,
@@ -397,7 +412,9 @@ def access_dataset(
             row_frequency=Clinical.constant,
             input_mount=proj_dir,
             output_mount=Path(mkdtemp()),
+            internal_upload=access_method.endswith("internal"),
         )
+        store.save(name=f"testxnatcs{run_prefix}")
     elif access_method == "api":
         store = xnat_repository
     else:
@@ -412,17 +429,19 @@ def xnat4tests_config() -> xnat4tests.Config:
 
 
 @pytest.fixture(scope="session")
-def xnat_root_dir(xnat4tests_config) -> Path:
+def xnat_root_dir(xnat4tests_config: xnat4tests.Config) -> Path:
     return xnat4tests_config.xnat_root_dir
 
 
 @pytest.fixture(scope="session")
-def xnat_archive_dir(xnat_root_dir):
+def xnat_archive_dir(xnat_root_dir: Path) -> Path:
     return xnat_root_dir / "archive"
 
 
 @pytest.fixture(scope="session")
-def xnat_repository(run_prefix, xnat4tests_config):
+def xnat_repository(
+    run_prefix: str, xnat4tests_config: xnat4tests.Config, frametree_home: str
+) -> ty.Generator[Xnat, None, None]:
 
     xnat4tests.start_xnat()
 
@@ -433,23 +452,7 @@ def xnat_repository(run_prefix, xnat4tests_config):
         cache_dir=mkdtemp(),
     )
 
-    # Stash a project prefix in the repository object
-    repository.__annotations__["run_prefix"] = run_prefix
-
-    yield repository
-
-
-@pytest.fixture(scope="session")
-def xnat_via_cs_repository(run_prefix, xnat4tests_config):
-
-    xnat4tests.start_xnat()
-
-    repository = Xnat(
-        server=xnat4tests_config.xnat_uri,
-        user=xnat4tests_config.xnat_user,
-        password=xnat4tests_config.xnat_password,
-        cache_dir=mkdtemp(),
-    )
+    repository.save(name="testxnat")
 
     # Stash a project prefix in the repository object
     repository.__annotations__["run_prefix"] = run_prefix
@@ -458,17 +461,17 @@ def xnat_via_cs_repository(run_prefix, xnat4tests_config):
 
 
 @pytest.fixture(scope="session")
-def xnat_respository_uri(xnat_repository):
-    return xnat_repository.server
+def xnat_respository_uri(xnat_repository: Xnat) -> str:
+    return xnat_repository.server  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
-def docker_registry_for_xnat():
+def docker_registry_for_xnat() -> str:
     return xnat4tests.start_registry()
 
 
 @pytest.fixture(scope="session")
-def docker_registry_for_xnat_uri(docker_registry_for_xnat):
+def docker_registry_for_xnat_uri(docker_registry_for_xnat: str) -> str:
     if sys.platform == "linux":
         uri = "172.17.0.1"  # Linux + GH Actions
     else:
@@ -477,19 +480,21 @@ def docker_registry_for_xnat_uri(docker_registry_for_xnat):
 
 
 @pytest.fixture
-def dummy_niftix(work_dir):
+def dummy_niftix(work_dir: Path) -> NiftiX:
 
     nifti_path = work_dir / "t1w.nii"
     json_path = work_dir / "t1w.json"
 
     # Create a random Nifti file to satisfy BIDS parsers
-    hdr = nibabel.Nifti1Header()
-    hdr.set_data_shape((10, 10, 10))
-    hdr.set_zooms((1.0, 1.0, 1.0))  # set voxel size
-    hdr.set_xyzt_units(2)  # millimeters
-    hdr.set_qform(numpy.diag([1, 2, 3, 1]))
-    nibabel.save(
-        nibabel.Nifti1Image(
+    hdr = nibabel.Nifti1Header()  # type: ignore[misc]
+    hdr.set_data_shape((10, 10, 10))  # type: ignore[misc]
+    # set voxel size
+    hdr.set_zooms((1.0, 1.0, 1.0))  # type: ignore[misc]
+    # millimeters
+    hdr.set_xyzt_units(2)  # type: ignore[misc]
+    hdr.set_qform(numpy.diag([1, 2, 3, 1]))  # type: ignore[misc]
+    nibabel.save(  # type: ignore[misc]
+        nibabel.Nifti1Image(  # type: ignore[misc]
             numpy.random.randint(0, 1, size=[10, 10, 10]),
             hdr.get_best_affine(),
             header=hdr,
@@ -504,7 +509,7 @@ def dummy_niftix(work_dir):
 
 
 @pytest.fixture(scope="session")
-def command_spec():
+def command_spec() -> ty.Dict[str, ty.Any]:
     return {
         "task": "frametree.testing.tasks:concatenate",
         "inputs": {
@@ -526,7 +531,7 @@ def command_spec():
             },
         },
         "outputs": {
-            "concatenated": {
+            "concatenated_file": {
                 "datatype": "text/text-file",
                 "field": "out_file",
                 "help": "an output file",
@@ -552,7 +557,7 @@ BIDS_VALIDATOR_APP_IMAGE = "frametree-bids-validator-app"
 
 
 @pytest.fixture(scope="session")
-def bids_command_spec(mock_bids_app_executable):
+def bids_command_spec(mock_bids_app_executable: str) -> ty.Dict[str, ty.Any]:
     inputs = {
         "T1w": {
             "configuration": {
@@ -608,12 +613,12 @@ def bids_command_spec(mock_bids_app_executable):
 
 
 @pytest.fixture(scope="session")
-def bids_success_str():
+def bids_success_str() -> str:
     return SUCCESS_STR
 
 
 @pytest.fixture(scope="session")
-def bids_validator_app_script():
+def bids_validator_app_script() -> str:
     return f"""#!/bin/sh
 # Echo inputs to get rid of any quotes
 BIDS_DATASET=$(echo $1)
@@ -635,7 +640,7 @@ echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
 
 # FIXME: should be converted to python script to be Windows compatible
 @pytest.fixture(scope="session")
-def mock_bids_app_script():
+def mock_bids_app_script() -> str:
     file_tests = ""
     for inpt_path, datatype in [
         ("anat/T1w", NiftiGzX),
@@ -663,7 +668,7 @@ echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
 
 
 @pytest.fixture(scope="session")
-def mock_bids_app_executable(build_cache_dir, mock_bids_app_script):
+def mock_bids_app_executable(build_cache_dir: Path, mock_bids_app_script: str) -> Path:
     # Create executable that runs validator then produces some mock output
     # files
     script_path = build_cache_dir / "mock-bids-app-executable.sh"
@@ -674,7 +679,7 @@ def mock_bids_app_executable(build_cache_dir, mock_bids_app_script):
 
 
 @pytest.fixture(scope="session")
-def mock_bids_app_image(mock_bids_app_script, build_cache_dir):
+def mock_bids_app_image(mock_bids_app_script: str, build_cache_dir: Path) -> str:
     return build_app_image(
         MOCK_BIDS_APP_IMAGE,
         mock_bids_app_script,
@@ -684,7 +689,7 @@ def mock_bids_app_image(mock_bids_app_script, build_cache_dir):
 
 
 @pytest.fixture(scope="session")
-def bids_validator_docker():
+def bids_validator_docker() -> str:
     dc = docker.from_env()
     try:
         dc.images.pull(BIDS_VALIDATOR_DOCKER)
@@ -693,7 +698,9 @@ def bids_validator_docker():
     return BIDS_VALIDATOR_DOCKER
 
 
-def build_app_image(tag_name, script, build_cache_dir, base_image):
+def build_app_image(
+    tag_name: str, script: str, build_cache_dir: Path, base_image: str
+) -> str:
     dc = docker.from_env()
 
     # Create executable that runs validator then produces some mock output
@@ -719,7 +726,7 @@ ENTRYPOINT ["/launch.sh"]"""
 
 
 @pytest.fixture(scope="session")
-def source_data():
+def source_data() -> Path:
     source_data = Path(tempfile.mkdtemp())
     # Create NIFTI data
     nifti_dir = source_data / "nifti"
@@ -747,7 +754,7 @@ def source_data():
 
 
 @pytest.fixture(scope="session")
-def nifti_sample_dir(source_data):
+def nifti_sample_dir(source_data: Path) -> Path:
     return source_data / "nifti"
 
 

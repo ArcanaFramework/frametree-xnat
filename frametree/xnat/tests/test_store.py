@@ -110,6 +110,7 @@ def test_get(static_dataset: FrameSet, caplog):
 def test_post(dataset: FrameSet, source_data: Path, caplog):
     blueprint = dataset.__annotations__["blueprint"]
     all_checksums = {}
+    is_direct = isinstance(dataset.store, XnatViaCS) and dataset.store.internal_upload
     for deriv_bp in blueprint.derivatives:
         dataset.add_sink(
             name=deriv_bp.path,
@@ -131,10 +132,10 @@ def test_post(dataset: FrameSet, source_data: Path, caplog):
         row = next(iter(dataset.rows(deriv_bp.row_frequency)))
         with caplog.at_level(logging.INFO, logger="frametree"):
             row[deriv_bp.path] = item
-        method_str = "direct" if type(dataset.store) is XnatViaCS else "api"
+        method_str = "direct" if is_direct else "api"
         assert f"{method_str} access" in caplog.text.lower()
 
-    access_method = "cs" if type(dataset.store) is XnatViaCS else "api"
+    access_method = "cs" if is_direct else "api"
 
     def check_inserted():
         for deriv_bp in blueprint.derivatives:
