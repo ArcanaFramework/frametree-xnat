@@ -46,6 +46,24 @@ class XnatViaCS(Xnat):
         The amount of time to wait before checking that the required
         fileset has been downloaded to cache by another process has
         completed if they are attempting to download the same fileset
+    row_frequency: Axes
+        the frequency of the row the pipeline is executed against
+    row_id : str
+        the ID of the row
+    input_mount : Path
+        the file-system path the inputs are mounted at
+    output_mount : Path
+        the file-system mount the outputs are to be stored in
+    server : str
+        the URI of the server
+    user : str
+        the username of the user
+    password : str
+        the password of the user
+    cache_dir: Path
+        the path to the cache dir to download any files that aren't on the input mount
+    internal_upload : bool, optional
+        whether to use XNAT CS's built-in output uploader or use the more flexible API
     """
 
     INPUT_MOUNT = Path("/input")
@@ -61,6 +79,7 @@ class XnatViaCS(Xnat):
     user: str = attrs.field()
     password: str = attrs.field()
     cache_dir: Path = attrs.field(default=CACHE_DIR, converter=Path)
+    internal_upload: bool = attrs.field(default=False)
 
     alias = "xnat_via_cs"
 
@@ -92,9 +111,14 @@ class XnatViaCS(Xnat):
             entry.row.frequency,
             entry.row.id,
         )
-        if entry.is_derivative:
+        if entry.is_derivative and self.internal_upload:
             # entry is in input mount
-            resource_path = self.entry_fspath(entry)
+            resource_path = self.output_mount_fspath(entry)
+            fspaths = [
+                p
+                for p in resource_path.parent.iterdir()
+                if re.match("^" + resource_path.name + r"\b", p.name)
+            ]
         else:
             match = re.match(
                 r"/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/"
@@ -109,14 +133,16 @@ class XnatViaCS(Xnat):
                 path = path.replace("scans", "SCANS").replace("resources/", "")
             path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
-        fspaths = [
-            p for p in resource_path.iterdir() if not p.name.endswith("_catalog.xml")
-        ]
+            fspaths = [
+                p
+                for p in resource_path.iterdir()
+                if not p.name.endswith("_catalog.xml")
+            ]
         return datatype(fspaths)  # type: ignore[no-any-return]
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
-        if not entry.is_derivative:
-            super().put_fileset(fileset, entry)  # Fallback to API access
+        if not (self.internal_upload and entry.is_derivative):
+            return super().put_fileset(fileset, entry)  # type: ignore[no-any-return]
         cached = fileset.copy(
             dest_dir=self.output_mount,
             make_dirs=True,
@@ -140,7 +166,7 @@ class XnatViaCS(Xnat):
         self.put_fileset(fileset, entry)
         return entry
 
-    def entry_fspath(self, entry: DataEntry) -> Path:
+    def output_mount_fspath(self, entry: DataEntry) -> Path:
         """Determine the paths that derivatives will be saved at"""
         assert entry.is_derivative
         path_parts = entry.path.split("/")
