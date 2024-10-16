@@ -11,6 +11,8 @@ from frametree.testing.blueprint import TestDatasetBlueprint, FileSetEntryBluepr
 
 logger = logging.getLogger("frametree")
 
+__all__ = ["ScanBlueprint", "TestXnatDatasetBlueprint"]
+
 
 @attrs.define
 class ScanBlueprint:
