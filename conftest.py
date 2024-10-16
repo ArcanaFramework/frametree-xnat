@@ -308,7 +308,14 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
 }
 
 GOOD_DATASETS = ["basic.api", "multi.api", "basic.cs", "multi.cs"]
-MUTABLE_DATASETS = ["basic.api", "multi.api", "basic.cs", "multi.cs"]
+MUTABLE_DATASETS = [
+    "basic.api",
+    "multi.api",
+    "basic.cs",
+    "multi.cs",
+    "basic.cs_internal",
+    "multi.cs_internal",
+]
 
 # ------------------------------------
 # Pytest fixtures and helper functions
@@ -321,8 +328,8 @@ def static_dataset(
     xnat_archive_dir: Path,
     source_data: Path,
     run_prefix: str,
-    request,
-):
+    request: pytest.FixtureRequest,
+) -> FrameSet:
     """Creates a static dataset to can be reused between unittests and save setup
     times"""
     dataset_id, access_method = request.param.split(".")
@@ -347,8 +354,8 @@ def dataset(
     xnat_archive_dir: Path,
     source_data: Path,
     run_prefix: str,
-    request,
-):
+    request: pytest.FixtureRequest,
+) -> FrameSet:
     """Creates a dataset that can be mutated (as its name is unique to the function)"""
     dataset_id, access_method = request.param.split(".")
     blueprint = TEST_XNAT_DATASET_BLUEPRINTS[dataset_id]
@@ -371,7 +378,7 @@ def dataset(
 
 
 @pytest.fixture
-def simple_dataset(xnat_repository, work_dir, run_prefix):
+def simple_dataset(xnat_repository: Xnat, work_dir: Path, run_prefix: str) -> FrameSet:
     blueprint = TestXnatDatasetBlueprint(
         dim_lengths=[1, 1, 1],
         scans=[
@@ -392,7 +399,7 @@ def access_dataset(
     xnat_archive_dir: Path,
     run_prefix: str,
 ) -> FrameSet:
-    if access_method == "cs":
+    if access_method.startswith("cs"):
         proj_dir = xnat_archive_dir / project_id / "arc001"
         store = XnatViaCS(
             server=xnat_repository.server,
@@ -402,6 +409,7 @@ def access_dataset(
             row_frequency=Clinical.constant,
             input_mount=proj_dir,
             output_mount=Path(mkdtemp()),
+            internal_upload=access_method.endswith("internal"),
         )
         store.save(name=f"testxnatcs{run_prefix}")
     elif access_method == "api":
