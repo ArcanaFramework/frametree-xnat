@@ -131,8 +131,12 @@ class XnatViaCS(Xnat):
             path = match.group("path")
             if "scans" in path:
                 path = path.replace("scans", "SCANS").replace("resources/", "")
-            path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
+            if not resource_path.exists():
+                resource_path = input_mount / path.replace("resources", "RESOURCES")
+            assert (
+                resource_path.exists()
+            ), f"Resource path {path} not found in {input_mount}: {list(input_mount.iterdir())}"  # noqa
             fspaths = [
                 p
                 for p in resource_path.iterdir()
