@@ -62,7 +62,7 @@ else:
 
 
 @pytest.fixture
-def catch_cli_exceptions():
+def catch_cli_exceptions() -> bool:
     return CATCH_CLI_EXCEPTIONS
 
 
@@ -125,7 +125,7 @@ def pkg_dir() -> Path:
 
 
 @pytest.fixture(scope="session")
-def frametree_home() -> Path:
+def frametree_home() -> ty.Generator[Path, None, None]:
     frametree_home = Path(tempfile.mkdtemp()) / "frametree-home"
     with patch.dict(os.environ, {"FRAMETREE_HOME": str(frametree_home)}):
         yield frametree_home
@@ -403,7 +403,7 @@ def access_dataset(
     run_prefix: str,
 ) -> FrameSet:
     if access_method.startswith("cs"):
-        proj_dir = xnat_archive_dir / project_id / "arc001"
+        proj_dir = xnat_archive_dir / project_id
         store = XnatViaCS(
             server=xnat_repository.server,
             user=xnat_repository.user,
@@ -461,28 +461,8 @@ def xnat_repository(
 
 
 @pytest.fixture(scope="session")
-def xnat_via_cs_repository(
-    run_prefix: str, xnat4tests_config: xnat4tests.Config
-) -> ty.Generator[XnatViaCS, None, None]:
-
-    xnat4tests.start_xnat()
-
-    repository = Xnat(
-        server=xnat4tests_config.xnat_uri,
-        user=xnat4tests_config.xnat_user,
-        password=xnat4tests_config.xnat_password,
-        cache_dir=mkdtemp(),
-    )
-
-    # Stash a project prefix in the repository object
-    repository.__annotations__["run_prefix"] = run_prefix
-
-    yield repository
-
-
-@pytest.fixture(scope="session")
 def xnat_respository_uri(xnat_repository: Xnat) -> str:
-    return xnat_repository.server
+    return xnat_repository.server  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")

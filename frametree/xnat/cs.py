@@ -181,7 +181,18 @@ class XnatViaCS(Xnat):
             self.row_frequency == Clinical.constant
             and row.frequency == Clinical.session
         ):
-            return self.input_mount / row.id  # type: ignore[no-any-return]
+            arc_dirs = [
+                d
+                for d in self.input_mount.iterdir()
+                if d.is_dir() and d.name.startswith("arc")
+            ]
+            for arc_dir in arc_dirs:
+                session_dir: Path = arc_dir / row.id
+                if session_dir.exists():
+                    return session_dir
+            raise FrameTreeNoDirectXnatMountException(
+                f"No direct mount found for {row.frequency} {row.id} found arc dirs {arc_dirs}"
+            )
         else:
             raise FrameTreeNoDirectXnatMountException
 
