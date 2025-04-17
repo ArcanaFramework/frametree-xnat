@@ -47,7 +47,7 @@ doc = [
 test = [
     "frametree-bids",
     "medimages4tests >=0.3",
-    "pipeline2app",
+    "pydra2app",
     "pytest >=5.4.3",
     "pytest-cov >=2.12.1",
     "pytest-env >=0.6.2",
