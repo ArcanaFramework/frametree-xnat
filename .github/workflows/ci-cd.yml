@@ -42,6 +42,8 @@ jobs:
       run: python3 -m pip install --break-system-packages --upgrade pip
     - name: Install Package
       run: python3 -m pip install --break-system-packages -e .[test]
+    - name: Install development Pydra
+      run: python3 -m pip install --break-system-packages git+https://github.com/nipype/pydra.git@develop
     - name: Change out of root directory
       run: cd .github
     - name: Pytest
@@ -71,7 +73,7 @@ jobs:
     - name: Install build tools
       run: python3 -m pip install --break-system-packages build twine
     - name: Build source and wheel distributions
-      run: python3 -m build 
+      run: python3 -m build
     - name: Check distributions
       run: twine check dist/*
     - uses: actions/upload-artifact@v3
