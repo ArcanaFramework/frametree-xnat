@@ -76,7 +76,7 @@ jobs:
       run: python3 -m build
     - name: Check distributions
       run: twine check dist/*
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: built-pkg
         path: dist
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Download build
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: built-pkg
         path: dist
