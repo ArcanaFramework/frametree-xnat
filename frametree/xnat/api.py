@@ -555,7 +555,7 @@ class Xnat(RemoteStore):
         uri: str
             uri of the data item to download the checksums for
         """
-        return fileset.hash_files(crypto=hashlib.md5, relative_to=fileset.fspath.parent)
+        return fileset.hash_files(crypto=hashlib.md5, relative_to=fileset.parent)
 
     ##################
     # Helper methods #
