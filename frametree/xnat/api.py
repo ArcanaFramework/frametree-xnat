@@ -509,7 +509,7 @@ class Xnat(RemoteStore):
         """
         return row.add_entry(path, datatype, uri=None)
 
-    def get_checksums(self, uri: str) -> ty.Dict[str, str]:
+    def get_checksums(self, uri: str) -> ty.Optional[ty.Dict[str, str]]:
         """
         Downloads the MD5 digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to
@@ -539,9 +539,16 @@ class Xnat(RemoteStore):
             }
         # strip base URI to get relative paths of files within the resource
         checksums = {
-            re.match(r".*/resources/\w+/files/(.*)$", u).group(1): c
+            re.match(r".*/resources/\w+/files/(.*)$", u).group(  # type: ignore[union-attr]
+                1
+            ): c
             for u, c in sorted(checksums.items())
         }
+        # If the checksums are empty (if the checksum.creation.enabled = false in XNAT)
+        # then the checksums will be empty. In this case, we return None
+        # to indicate that the checksums are not available
+        if all(not c for c in checksums.values()):
+            return None
         return checksums
 
     def calculate_checksums(self, fileset: FileSet) -> ty.Dict[str, str]:
