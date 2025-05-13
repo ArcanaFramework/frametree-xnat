@@ -4,11 +4,13 @@ containers
 """
 
 import os
+import typing as ty
 import re
 import logging
 from pathlib import Path
 import attrs
 from fileformats.core import FileSet
+from fileformats.core.exceptions import FormatMismatchError
 from frametree.core.utils import path2label
 from frametree.common import Clinical
 from frametree.core.axes import Axes
@@ -97,7 +99,7 @@ class XnatViaCS(Xnat):
     def password_default(self) -> str:
         return os.environ["XNAT_PASS"]
 
-    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
+    def get_fileset(self, entry: DataEntry, datatype: ty.Type[FileSet]) -> FileSet:
         """Attempt to get fileset directly from the input mount, falling back to API
         access if that fails"""
         try:
@@ -142,7 +144,20 @@ class XnatViaCS(Xnat):
                 for p in resource_path.iterdir()
                 if not p.name.endswith("_catalog.xml")
             ]
-        return datatype(fspaths)  # type: ignore[no-any-return]
+        # We use from_paths instead of just datatype(fspaths) to handle unions
+        if ty.get_origin(datatype) is ty.Union:
+            reasons = []
+            candidate: ty.Type[FileSet]
+            for candidate in ty.get_args(datatype):
+                try:
+                    return candidate(fspaths)
+                except FormatMismatchError as e:
+                    reasons.append("candidate: " + str(e))
+            raise FormatMismatchError(
+                f"None of {fspaths} matched any of {ty.get_args(datatype)}: "
+                + "\n\n".join(reasons)
+            )
+        return datatype(fspaths)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         if not (self.internal_upload and entry.is_derivative):
