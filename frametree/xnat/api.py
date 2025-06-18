@@ -248,7 +248,9 @@ class Xnat(RemoteStore):
             kwargs["user"] = self.user
         if self.password is not None:
             kwargs["password"] = self.password
-        return xnat.connect(server=self.server, verify=self.verify_ssl, **kwargs)
+        return xnat.connect(
+            server=self.server, verify=self.verify_ssl, logger="xnat", **kwargs
+        )
 
     def disconnect(self, session: xnat.XNATSession) -> None:
         """
