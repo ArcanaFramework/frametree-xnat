@@ -140,7 +140,7 @@ class Xnat(RemoteStore):
                             datatype = FileSet
                             item_metadata = {}
                         row.add_entry(
-                            path=f"{xscan.type}/{xresource.label}",
+                            path=f"{xscan.type}/{xresource.label}/{xscan.id}",  # append scan ID to make it unique
                             datatype=datatype,
                             order=xscan.id,
                             quality=xscan.quality,
