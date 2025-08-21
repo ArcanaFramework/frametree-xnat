@@ -4,7 +4,7 @@ import typing as ty
 import tempfile
 import logging
 import hashlib
-from datetime import datetime
+from datetime import datetime, date
 import json
 import re
 from operator import attrgetter
@@ -38,6 +38,7 @@ logger = logging.getLogger("frametree")
 tag_parse_re = re.compile(r"\((\d+),(\d+)\)")
 
 RELEVANT_DICOM_TAG_TYPES = set(("UI", "CS", "DA", "TM", "SH", "LO", "PN", "ST", "AS"))
+DEFAULT_DATE = date(day=1, month=1, year=1970)
 DEFAULT_DATETIME = datetime(day=1, month=1, year=1970, hour=0, minute=0, second=0)
 
 
@@ -94,9 +95,9 @@ class Xnat(RemoteStore):
                 xsessions = sorted(
                     xsubject.experiments.values(),
                     key=lambda x: (
-                        x.date if x.date else DEFAULT_DATETIME,
+                        x.date if x.date else DEFAULT_DATE,
                         x.time if x.time else DEFAULT_DATETIME,
-                        x.label,
+                        x.label if x.label else "",
                     ),
                 )
                 for xsess in xsessions:

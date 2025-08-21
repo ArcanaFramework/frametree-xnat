@@ -5,16 +5,26 @@ import operator as op
 import shutil
 import logging
 from pathlib import Path
+from datetime import datetime
 from functools import reduce
+import random
 import itertools
 import pytest
 from pydra.utils.hash import hash_object
 from fileformats.generic import File
+from fileformats.text import Text
 from fileformats.field import Text as TextField
 from frametree.common import Clinical
 from frametree.core.frameset import FrameSet
-from frametree.xnat import XnatViaCS
+from frametree.xnat import XnatViaCS, Xnat
 from frametree.core.serialize import asdict
+from frametree.xnat.testing import (
+    TestXnatDatasetBlueprint,
+    ScanBlueprint as ScanBP,
+)
+from frametree.testing.blueprint import FileSetEntryBlueprint as FileBP
+from conftest import access_dataset
+
 
 if sys.platform == "win32":
 
@@ -34,8 +44,8 @@ else:
         )
 
 
-# logger = logging.getLogger('frametree')
-# logger.setLevel(logging.INFO)
+# # logger = logging.getLogger('frametree')
+# # logger.setLevel(logging.INFO)
 
 
 def test_populate_tree(static_dataset: FrameSet):
@@ -187,3 +197,44 @@ def test_dataset_bytes_hash(static_dataset):
     hsh = hash_object(static_dataset)
     # Check hashing is stable
     assert hash_object(static_dataset) == hsh
+
+
+def test_session_sorting(
+    xnat_repository: Xnat,
+    xnat_archive_dir: Path,
+    source_data: Path,
+    run_prefix: str,
+):
+    """Creates a dataset that with session date"""
+    blueprint = TestXnatDatasetBlueprint(  # dataset name
+        dim_lengths=[2, 1, 1],  # number of visits, groups and members respectively
+        scans=[
+            ScanBP(
+                name="scan1",  # scan type (ID is index)
+                resources=[
+                    FileBP(
+                        path="Text",
+                        datatype=Text,
+                        filenames=["file.txt"],  # resource name  # Data datatype
+                    )
+                ],
+            ),
+        ],
+    )
+    project_id = run_prefix + "datecompare" + str(hex(random.getrandbits(16)))[2:]
+    blueprint.make_dataset(
+        dataset_id=project_id,
+        store=xnat_repository,
+        source_data=source_data,
+        name="",
+    )
+    with xnat_repository.connection:
+        xproject = xnat_repository.connection.projects[project_id]
+        xsubject = next(iter(xproject.subjects.values()))
+        xsession = xsubject.experiments["visit0group0member0"]
+        xsession.date = datetime.today()
+
+    dataset = access_dataset(
+        project_id, "api", xnat_repository, xnat_archive_dir, run_prefix
+    )
+    assert list(dataset.row_ids()) == ["visit1group0member0", "visit0group0member0"]
