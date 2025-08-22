@@ -199,7 +199,7 @@ def test_dataset_bytes_hash(static_dataset):
     assert hash_object(static_dataset) == hsh
 
 
-def test_session_sorting(
+def test_session_datetime_sorting(
     xnat_repository: Xnat,
     xnat_archive_dir: Path,
     source_data: Path,
@@ -233,6 +233,7 @@ def test_session_sorting(
         xsubject = next(iter(xproject.subjects.values()))
         xsession = xsubject.experiments["visit0group0member0"]
         xsession.date = datetime.today()
+        xsession.time = datetime.now().time()
 
     dataset = access_dataset(
         project_id, "api", xnat_repository, xnat_archive_dir, run_prefix
