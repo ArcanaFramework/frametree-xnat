@@ -144,6 +144,8 @@ class XnatViaCS(Xnat):
                 for p in resource_path.iterdir()
                 if not p.name.endswith("_catalog.xml")
             ]
+        if not fspaths:
+            raise ValueError(f"No valid file paths found for {entry}")
         # We use from_paths instead of just datatype(fspaths) to handle unions
         if ty.get_origin(datatype) is ty.Union:
             reasons = []
@@ -154,7 +156,7 @@ class XnatViaCS(Xnat):
                 except FormatMismatchError as e:
                     reasons.append("candidate: " + str(e))
             raise FormatMismatchError(
-                f"None of {fspaths} matched any of {ty.get_args(datatype)}: "
+                f"None of {fspaths} in {entry} matched any of {ty.get_args(datatype)}: "
                 + "\n\n".join(reasons)
             )
         return datatype(fspaths)
