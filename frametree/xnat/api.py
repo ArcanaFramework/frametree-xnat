@@ -142,7 +142,7 @@ class Xnat(RemoteStore):
                         row.add_entry(
                             path=f"{xscan.type}/{xresource.label}",
                             datatype=datatype,
-                            order=xscan.id,
+                            order_key=xscan.id,
                             quality=xscan.quality,
                             item_metadata=item_metadata,
                             uri=uri,
