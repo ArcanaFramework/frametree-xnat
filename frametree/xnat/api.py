@@ -65,14 +65,9 @@ class Xnat(RemoteStore):
         completed if they are attempting to download the same fileset
     verify_ssl : bool
         Whether to verify SSL certificates when connecting to the XNAT server
-    load_only : dict[frametree.axes.medimage.MedImage, ty.Collection[str]] | None
-        A mapping of medimage axes to the IDs to load for each axis. Provided for
-        efficiency when only a subset of data is needed, shouldn't be used when
-        aggregating data across any of the provided axes.
     """
 
     verify_ssl: bool = True
-    load_only: dict[MedImage, ty.Collection[str]] = attrs.field(factory=dict)
 
     depth = 2
     DEFAULT_AXES = MedImage
