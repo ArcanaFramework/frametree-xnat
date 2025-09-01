@@ -12,7 +12,7 @@ import attrs
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
 from frametree.core.utils import path2label
-from frametree.common import Clinical
+from frametree.axes.medimage import MedImage
 from frametree.core.axes import Axes
 from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
@@ -73,7 +73,7 @@ class XnatViaCS(Xnat):
     WORK_MOUNT = Path("/work")
     CACHE_DIR = Path("/cache")
 
-    row_frequency: Axes = attrs.field(default=Clinical.session)
+    row_frequency: Axes = attrs.field(default=MedImage.session)
     row_id: str = attrs.field(default=None)
     input_mount: Path = attrs.field(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attrs.field(default=OUTPUT_MOUNT, converter=Path)
@@ -144,6 +144,8 @@ class XnatViaCS(Xnat):
                 for p in resource_path.iterdir()
                 if not p.name.endswith("_catalog.xml")
             ]
+        if not fspaths:
+            raise ValueError(f"No valid file paths found for {entry}")
         # We use from_paths instead of just datatype(fspaths) to handle unions
         if ty.get_origin(datatype) is ty.Union:
             reasons = []
@@ -154,7 +156,7 @@ class XnatViaCS(Xnat):
                 except FormatMismatchError as e:
                     reasons.append("candidate: " + str(e))
             raise FormatMismatchError(
-                f"None of {fspaths} matched any of {ty.get_args(datatype)}: "
+                f"None of {fspaths} in {entry} matched any of {ty.get_args(datatype)}: "
                 + "\n\n".join(reasons)
             )
         return datatype(fspaths)
@@ -197,8 +199,8 @@ class XnatViaCS(Xnat):
         if self.row_frequency == row.frequency:
             return self.input_mount
         elif (
-            self.row_frequency == Clinical.constant
-            and row.frequency == Clinical.session
+            self.row_frequency == MedImage.constant
+            and row.frequency == MedImage.session
         ):
             arc_dirs = [
                 d
@@ -217,11 +219,11 @@ class XnatViaCS(Xnat):
 
     def _make_uri(self, row: DataRow) -> str:
         uri: str = "/data/archive/projects/" + row.frameset.id
-        if row.frequency == Clinical.session:
+        if row.frequency == MedImage.session:
             uri += "/experiments/" + row.id
-        elif row.frequency == Clinical.subject:
+        elif row.frequency == MedImage.subject:
             uri += "/subjects/" + row.id
-        elif row.frequency != Clinical.constant:
+        elif row.frequency != MedImage.constant:
             uri += "/subjects/" + self.make_row_name(row)
         return uri
 

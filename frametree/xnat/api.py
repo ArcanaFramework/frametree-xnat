@@ -30,7 +30,7 @@ from frametree.core.serialize import asdict
 from frametree.core.axes import Axes
 from frametree.core.tree import DataTree
 from frametree.core.entry import DataEntry
-from frametree.common import Clinical
+from frametree.axes.medimage import MedImage
 
 
 logger = logging.getLogger("frametree")
@@ -63,12 +63,19 @@ class Xnat(RemoteStore):
         The amount of time to wait before checking that the required
         fileset has been downloaded to cache by another process has
         completed if they are attempting to download the same fileset
+    verify_ssl : bool
+        Whether to verify SSL certificates when connecting to the XNAT server
+    load_only : dict[frametree.axes.medimage.MedImage, ty.Collection[str]] | None
+        A mapping of medimage axes to the IDs to load for each axis. Provided for
+        efficiency when only a subset of data is needed, shouldn't be used when
+        aggregating data across any of the provided axes.
     """
 
     verify_ssl: bool = True
+    load_only: dict[MedImage, ty.Collection[str]] = attrs.field(factory=dict)
 
     depth = 2
-    DEFAULT_AXES = Clinical
+    DEFAULT_AXES = MedImage
     DEFAULT_HIERARCHY = ("subject", "session")
     # DEFAULT_ID_PATTERNS = (("visit", "session:order"),)
     PROV_RESOURCE = "PROVENANCE"
@@ -89,8 +96,14 @@ class Xnat(RemoteStore):
         with self.connection:
             # Get all "leaf" nodes, i.e. XNAT imaging session objects
             xproject = self.connection.projects[tree.dataset_id]
-            subjects = sorted(xproject.subjects.values(), key=attrgetter("label"))
-            for xsubject in subjects:
+            if MedImage.subject in self.load_only:
+                xsubjects = [
+                    xproject.subjects[s] for s in self.load_only[MedImage.subject]
+                ]
+            else:
+                xsubjects = xproject.subjects.values()
+            xsubjects = sorted(xsubjects, key=attrgetter("label"))
+            for xsubject in xsubjects:
                 # Sort sessions into a logical order
                 xsessions = sorted(
                     xsubject.experiments.values(),
@@ -142,7 +155,7 @@ class Xnat(RemoteStore):
                         row.add_entry(
                             path=f"{xscan.type}/{xresource.label}",
                             datatype=datatype,
-                            order=xscan.id,
+                            order_key=xscan.id,
                             quality=xscan.quality,
                             item_metadata=item_metadata,
                             uri=uri,
@@ -457,7 +470,11 @@ class Xnat(RemoteStore):
             xrow.fields[field_name] = str(value)
 
     def create_fileset_entry(
-        self, path: str, datatype: type, row: DataRow
+        self,
+        path: str,
+        datatype: ty.Type[FileSet],
+        row: DataRow,
+        order_key: int | str | None = None,
     ) -> DataEntry:
         """
         Creates a new resource entry to store a fileset
@@ -476,15 +493,16 @@ class Xnat(RemoteStore):
         with self.connection:
             xrow = self.get_xrow(row)
             if not DataEntry.path_is_derivative(path):
-                if row.frequency != Clinical.session:
+                if row.frequency != MedImage.session:
                     raise FrameTreeUsageError(
                         f"Cannot create file-set entry for '{path}': non-derivative "
                         "file-sets (specified by entry paths that don't contain a "
                         "'@' separator) are only allowed in MRSession nodes"
                     )
-                scan_id, resource_label = path.split("/")
+                scan_type, resource_label = path.split("/")
                 parent = self.connection.classes.MrScanData(
-                    id=scan_id,
+                    id=order_key if order_key is not None else scan_type,
+                    type=scan_type,
                     parent=xrow,
                 )
                 xformat = None
@@ -506,7 +524,13 @@ class Xnat(RemoteStore):
             )
         return entry
 
-    def create_field_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+    def create_field_entry(
+        self,
+        path: str,
+        datatype: type,
+        row: DataRow,
+        order_key: int | str | None = None,
+    ) -> DataEntry:
         """
         Creates a new resource entry to store a field
 
@@ -592,11 +616,11 @@ class Xnat(RemoteStore):
         """
         with self.connection:
             xproject = self.connection.projects[row.frameset.id]
-            if row.frequency == Clinical.constant:
+            if row.frequency == MedImage.constant:
                 xrow = xproject
-            elif row.frequency == Clinical.subject:
+            elif row.frequency == MedImage.subject:
                 xrow = xproject.subjects[row.frequency_id("subject")]
-            elif row.frequency == Clinical.session:
+            elif row.frequency == MedImage.session:
                 xrow = xproject.experiments[row.frequency_id("session")]
             else:
                 # For rows that don't have a place within the standard XNAT hierarchy,

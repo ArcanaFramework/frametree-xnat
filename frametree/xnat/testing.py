@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 import tempfile
 import attrs
-from frametree.common import Clinical
+from frametree.axes.medimage import MedImage
 from frametree.core.axes import Axes
 from frametree.core.row import DataRow
 from frametree.testing.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
@@ -27,7 +27,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):  # type: ignore[misc]
     scans: ty.List[ScanBlueprint]
 
     # Overwrite attributes in core blueprint class
-    axes: type = Clinical
+    axes: type = MedImage
     hierarchy: ty.List[Axes] = ["subject", "session"]
     filesets: ty.Optional[ty.List[str]] = None
 

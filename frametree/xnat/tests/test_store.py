@@ -14,7 +14,7 @@ from pydra.utils.hash import hash_object
 from fileformats.generic import File
 from fileformats.text import Text
 from fileformats.field import Text as TextField
-from frametree.common import Clinical
+from frametree.axes.medimage import MedImage
 from frametree.core.frameset import FrameSet
 from frametree.xnat import XnatViaCS, Xnat
 from frametree.core.serialize import asdict
@@ -50,7 +50,7 @@ else:
 
 def test_populate_tree(static_dataset: FrameSet):
     blueprint = static_dataset.__annotations__["blueprint"]
-    for freq in Clinical:
+    for freq in MedImage:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
         # together to get the combined number of rows expected for that
         # row_frequency
@@ -90,7 +90,7 @@ def test_get(static_dataset: FrameSet, caplog):
                 )
                 expected_files[source_name] = set(resource_bp.filenames)
     with caplog.at_level(logging.INFO, logger="frametree"):
-        for row in static_dataset.rows(Clinical.session):
+        for row in static_dataset.rows(MedImage.session):
             for source_name, files in expected_files.items():
                 try:
                     item = row[source_name]
