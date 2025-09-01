@@ -66,7 +66,7 @@ class Xnat(RemoteStore):
     verify_ssl : bool
         Whether to verify SSL certificates when connecting to the XNAT server
     load_only : dict[frametree.axes.medimage.MedImage, ty.Collection[str]] | None
-        A mapping of clinical axes to the IDs to load for each axis. Provided for
+        A mapping of medimage axes to the IDs to load for each axis. Provided for
         efficiency when only a subset of data is needed, shouldn't be used when
         aggregating data across any of the provided axes.
     """
