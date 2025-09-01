@@ -19,6 +19,7 @@ class ScanBlueprint:
 
     name: str
     resources: ty.List[FileSetEntryBlueprint]
+    id: str | None = None
 
 
 @attrs.define(slots=False, kw_only=True)
@@ -35,7 +36,8 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):  # type: ignore[misc]
         logger.debug("Making entries in %s row: %s", row, self.scans)
         xrow = row.frameset.store.get_xrow(row)
         xclasses = xrow.xnat_session.classes
-        for scan_id, scan_bp in enumerate(self.scans, start=1):
+        for i, scan_bp in enumerate(self.scans, start=1):
+            scan_id = scan_bp.id if scan_bp.id is not None else i
             xscan = xclasses.MrScanData(id=scan_id, type=scan_bp.name, parent=xrow)
             for resource_bp in scan_bp.resources:
                 tmp_dir = Path(tempfile.mkdtemp())

@@ -9,10 +9,11 @@ from datetime import datetime
 from functools import reduce
 import random
 import itertools
+from typing import Any
 import pytest
 from pydra.utils.hash import hash_object
 from fileformats.generic import File
-from fileformats.text import Text
+from fileformats.text import Plain as PlainText
 from fileformats.field import Text as TextField
 from frametree.axes.medimage import MedImage
 from frametree.core.frameset import FrameSet
@@ -28,14 +29,14 @@ from conftest import access_dataset
 
 if sys.platform == "win32":
 
-    def get_perms(f):
+    def get_perms(f: str) -> str:
         return "WINDOWS-UNKNOWN"
 
 else:
     from pwd import getpwuid
     from grp import getgrgid
 
-    def get_perms(f):
+    def get_perms(f: str) -> tuple[str, str, str]:
         st = os.stat(f)
         return (
             getpwuid(st.st_uid).pw_name,
@@ -48,7 +49,7 @@ else:
 # # logger.setLevel(logging.INFO)
 
 
-def test_populate_tree(static_dataset: FrameSet):
+def test_populate_tree(static_dataset: FrameSet) -> None:
     blueprint = static_dataset.__annotations__["blueprint"]
     for freq in MedImage:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
@@ -59,12 +60,13 @@ def test_populate_tree(static_dataset: FrameSet):
             (ln for ln, b in zip(blueprint.dim_lengths, freq) if b),
             1,
         )
-        assert len(static_dataset.rows(freq)) == num_rows, (
-            f"{freq} doesn't match {len(static_dataset.rows(freq))}" f" vs {num_rows}"
+        assert len(static_dataset.rows(str(freq))) == num_rows, (
+            f"{freq} doesn't match {len(static_dataset.rows(str(freq)))}"
+            f" vs {num_rows}"
         )
 
 
-def test_populate_row(static_dataset: FrameSet):
+def test_populate_row(static_dataset: FrameSet) -> None:
     blueprint = static_dataset.__annotations__["blueprint"]
     for row in static_dataset.rows("session"):
         expected_entries = sorted(
@@ -78,7 +80,7 @@ def test_populate_row(static_dataset: FrameSet):
         assert sorted(e.path for e in row.entries) == expected_entries
 
 
-def test_get(static_dataset: FrameSet, caplog):
+def test_get(static_dataset: FrameSet, caplog: Any) -> None:
     blueprint = static_dataset.__annotations__["blueprint"]
     expected_files = {}
     for scan_bp in blueprint.scans:
@@ -90,7 +92,7 @@ def test_get(static_dataset: FrameSet, caplog):
                 )
                 expected_files[source_name] = set(resource_bp.filenames)
     with caplog.at_level(logging.INFO, logger="frametree"):
-        for row in static_dataset.rows(MedImage.session):
+        for row in static_dataset.rows(str(MedImage.session)):
             for source_name, files in expected_files.items():
                 try:
                     item = row[source_name]
@@ -110,14 +112,14 @@ def test_get(static_dataset: FrameSet, caplog):
                     )
                     raise PermissionError(msg)
                 item_files = sorted(
-                    p.name for p in item.fspaths if not p.name.endswith("catalog.xml")
+                    p.name for p in item.fspaths if not p.name.endswith("catalog.xml")  # type: ignore[attr-defined]
                 )
                 assert item_files == sorted(Path(f).name for f in files)
     method_str = "direct" if type(static_dataset.store) is XnatViaCS else "api"
     assert f"{method_str} access" in caplog.text.lower()
 
 
-def test_post(dataset: FrameSet, source_data: Path, caplog):
+def test_post(dataset: FrameSet, source_data: Path, caplog: Any) -> None:
     blueprint = dataset.__annotations__["blueprint"]
     all_checksums = {}
     is_direct = isinstance(dataset.store, XnatViaCS) and dataset.store.internal_upload
@@ -137,7 +139,7 @@ def test_post(dataset: FrameSet, source_data: Path, caplog):
         #     relative_to = fspaths[0]
         # else:
         #     relative_to = deriv_tmp_dir
-        all_checksums[deriv_bp.path] = item.hash_files()
+        all_checksums[deriv_bp.path] = item.hash_files()  # type: ignore[attr-defined]
         # Insert into first row of that row_frequency in dataset
         row = next(iter(dataset.rows(deriv_bp.row_frequency)))
         with caplog.at_level(logging.INFO, logger="frametree"):
@@ -147,13 +149,13 @@ def test_post(dataset: FrameSet, source_data: Path, caplog):
 
     access_method = "cs" if is_direct else "api"
 
-    def check_inserted():
+    def check_inserted() -> None:
         for deriv_bp in blueprint.derivatives:
             row = next(iter(dataset.rows(deriv_bp.row_frequency)))
             cell = row.cell(deriv_bp.path, allow_empty=False)
             item = cell.item
             assert isinstance(item, deriv_bp.datatype)
-            assert item.hash_files() == all_checksums[deriv_bp.path]
+            assert item.hash_files() == all_checksums[deriv_bp.path]  # type: ignore[attr-defined]
 
     if access_method == "api":
         check_inserted()  # Check cache
@@ -162,7 +164,7 @@ def test_post(dataset: FrameSet, source_data: Path, caplog):
         check_inserted()
 
 
-def test_frameset_roundtrip(simple_dataset: FrameSet):
+def test_frameset_roundtrip(simple_dataset: FrameSet) -> None:
     definition = asdict(simple_dataset, omit=["store", "name"])
     definition["store-version"] = "1.0.0"
 
@@ -180,19 +182,23 @@ def test_frameset_roundtrip(simple_dataset: FrameSet):
 
 # We use __file__ here as we just need any old file and can guarantee it exists
 @pytest.mark.parametrize("datatype,value", [(File, __file__), (TextField, "value")])
-def test_provenance_roundtrip(datatype: type, value: str, simple_dataset: FrameSet):
+def test_provenance_roundtrip(
+    datatype: type[Any], value: str, simple_dataset: FrameSet
+) -> None:
     provenance = {"a": 1, "b": [1, 2, 3], "c": {"x": True, "y": "foo", "z": "bar"}}
     data_store = simple_dataset.store
 
     with data_store.connection:
         entry = data_store.create_entry("provtest@", datatype, simple_dataset.root)
-        data_store.put(datatype(value), entry)  # Create the entry first
+        data_store.put(
+            datatype(value), entry
+        )  # Create the entry first  # type: ignore[misc]
         data_store.put_provenance(provenance, entry)  # Save the provenance
         reloaded_provenance = data_store.get_provenance(entry)  # reload the provenance
         assert provenance == reloaded_provenance
 
 
-def test_dataset_bytes_hash(static_dataset):
+def test_dataset_bytes_hash(static_dataset: FrameSet) -> None:
 
     hsh = hash_object(static_dataset)
     # Check hashing is stable
@@ -204,9 +210,9 @@ def test_session_datetime_sorting(
     xnat_archive_dir: Path,
     source_data: Path,
     run_prefix: str,
-):
+) -> None:
     """Creates a dataset that with session date"""
-    blueprint = TestXnatDatasetBlueprint(  # dataset name
+    blueprint = TestXnatDatasetBlueprint(  # type: ignore[call-arg]
         dim_lengths=[2, 1, 1],  # number of visits, groups and members respectively
         scans=[
             ScanBP(
@@ -239,3 +245,48 @@ def test_session_datetime_sorting(
         project_id, "api", xnat_repository, xnat_archive_dir, run_prefix
     )
     assert list(dataset.row_ids()) == ["visit1group0member0", "visit0group0member0"]
+
+
+def test_duplicate_entry_access(
+    xnat_repository: Xnat, tmp_path: Path, run_prefix: str
+) -> None:
+
+    blueprint = TestXnatDatasetBlueprint(  # type:  ignore[call-arg]
+        dim_lengths=[1, 1, 1],
+        scans=[
+            ScanBP(
+                name="a_scan",  # scan type (ID is index)
+                resources=[
+                    FileBP(
+                        path="Text",
+                        datatype=PlainText,
+                        filenames=["1.txt"],  # resource name  # Data datatype
+                    )
+                ],
+                id="1",
+            ),
+            ScanBP(
+                name="a_scan",  # scan type (ID is index)
+                resources=[
+                    FileBP(
+                        path="Text",
+                        datatype=PlainText,
+                        filenames=["2.txt"],  # resource name  # Data datatype
+                    )
+                ],
+                id="2",
+            ),
+        ],
+    )
+
+    project_id = run_prefix + "duplicatescans"
+    dataset: FrameSet = blueprint.make_dataset(xnat_repository, project_id)
+    row = dataset.row(id="visit0group0member0", frequency="session")
+    assert PlainText(row.entry("a_scan/Text", order=0).item).contents == "1.txt"
+    assert PlainText(row.entry("a_scan/Text", order=1).item).contents == "2.txt"
+    assert PlainText(row.entry("a_scan/Text", order=-1).item).contents == "2.txt"
+    assert PlainText(row.entry("a_scan/Text", order=-2).item).contents == "1.txt"
+    assert PlainText(row.entry("a_scan/Text", key="1").item).contents == "1.txt"
+    assert PlainText(row.entry("a_scan/Text", key="2").item).contents == "2.txt"
+    with pytest.raises(ValueError):
+        row.entry("a_scan", order=0, key="0")
