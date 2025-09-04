@@ -508,108 +508,10 @@ def dummy_niftix(work_dir: Path) -> NiftiX:
     return NiftiX.from_fspaths(nifti_path, json_path)
 
 
-@pytest.fixture(scope="session")
-def command_spec() -> ty.Dict[str, ty.Any]:
-    return {
-        "task": "frametree.testing.tasks:concatenate",
-        "inputs": {
-            "first_file": {
-                "datatype": "text/text-file",
-                "field": "in_file1",
-                "column_defaults": {
-                    "operates_on": "session",
-                },
-                "help": "the first file to pass as an input",
-            },
-            "second_file": {
-                "datatype": "text/text-file",
-                "field": "in_file2",
-                "column_defaults": {
-                    "operates_on": "session",
-                },
-                "help": "the second file to pass as an input",
-            },
-        },
-        "outputs": {
-            "concatenated_file": {
-                "datatype": "text/text-file",
-                "field": "out_file",
-                "help": "an output file",
-            }
-        },
-        "parameters": {
-            "duplicates": {
-                "field": "duplicates",
-                "default": 2,
-                "datatype": "int",
-                "required": True,
-                "help": "a parameter",
-            }
-        },
-        "operates_on": "session",
-    }
-
-
 BIDS_VALIDATOR_DOCKER = "bids/validator:latest"
 SUCCESS_STR = "This dataset appears to be BIDS compatible"
 MOCK_BIDS_APP_IMAGE = "frametree-mock-bids-app"
 BIDS_VALIDATOR_APP_IMAGE = "frametree-bids-validator-app"
-
-
-@pytest.fixture(scope="session")
-def bids_command_spec(mock_bids_app_executable: str) -> ty.Dict[str, ty.Any]:
-    inputs = {
-        "T1w": {
-            "configuration": {
-                "path": "anat/T1w",
-            },
-            "datatype": "medimage/nifti-gz-x",
-            "help": "T1-weighted image",
-        },
-        "T2w": {
-            "configuration": {
-                "path": "anat/T2w",
-            },
-            "datatype": "medimage/nifti-gz-x",
-            "help": "T2-weighted image",
-        },
-        "DWI": {
-            "configuration": {
-                "path": "dwi/dwi",
-            },
-            "datatype": "medimage/nifti-gz-x-bvec",
-            "help": "DWI-weighted image",
-        },
-    }
-
-    outputs = {
-        "file1": {
-            "configuration": {
-                "path": "file1",
-            },
-            "datatype": "text/text-file",
-            "help": "an output file",
-        },
-        "file2": {
-            "configuration": {
-                "path": "file2",
-            },
-            "datatype": "text/text-file",
-            "help": "another output file",
-        },
-    }
-
-    return {
-        "task": "frametree.bids.tasks:bids_app",
-        "inputs": inputs,
-        "outputs": outputs,
-        "operates_on": "session",
-        "configuration": {
-            "inputs": inputs,
-            "outputs": outputs,
-            "executable": str(mock_bids_app_executable),
-        },
-    }
 
 
 @pytest.fixture(scope="session")
