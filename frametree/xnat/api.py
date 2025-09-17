@@ -91,12 +91,12 @@ class Xnat(RemoteStore):
         with self.connection:
             # Get all "leaf" nodes, i.e. XNAT imaging session objects
             xproject = self.connection.projects[tree.dataset_id]
-            if MedImage.subject in self.load_only:
-                xsubjects = [
-                    xproject.subjects[s] for s in self.load_only[MedImage.subject]
-                ]
-            else:
-                xsubjects = xproject.subjects.values()
+            # if MedImage.subject in self.load_only:
+            #     xsubjects = [
+            #         xproject.subjects[s] for s in self.load_only[MedImage.subject]
+            #     ]
+            # else:
+            xsubjects = xproject.subjects.values()
             xsubjects = sorted(xsubjects, key=attrgetter("label"))
             for xsubject in xsubjects:
                 # Sort sessions into a logical order
