@@ -1,31 +1,31 @@
-import os
-import sys
-import os.path
-import operator as op
-import shutil
+import itertools
 import logging
-from pathlib import Path
+import operator as op
+import os
+import random
+import shutil
+import sys
+from copy import deepcopy
 from datetime import datetime
 from functools import reduce
-import random
-import itertools
+from pathlib import Path
 from typing import Any
+
 import pytest
-from pydra.utils.hash import hash_object
+from fileformats.field import Text as TextField
 from fileformats.generic import File
 from fileformats.text import Plain as PlainText
-from fileformats.field import Text as TextField
+from fileformats.text import TextFile
 from frametree.axes.medimage import MedImage
 from frametree.core.frameset import FrameSet
-from frametree.xnat import XnatViaCS, Xnat
 from frametree.core.serialize import asdict
-from frametree.xnat.testing import (
-    TestXnatDatasetBlueprint,
-    ScanBlueprint as ScanBP,
-)
 from frametree.testing.blueprint import FileSetEntryBlueprint as FileBP
-from conftest import access_dataset
+from pydra.utils.hash import hash_object
 
+from conftest import access_dataset
+from frametree.xnat import Xnat, XnatViaCS
+from frametree.xnat.testing import ScanBlueprint as ScanBP
+from frametree.xnat.testing import TestXnatDatasetBlueprint
 
 if sys.platform == "win32":
 
@@ -33,8 +33,8 @@ if sys.platform == "win32":
         return "WINDOWS-UNKNOWN"
 
 else:
-    from pwd import getpwuid
     from grp import getgrgid
+    from pwd import getpwuid
 
     def get_perms(f: str) -> tuple[str, str, str]:
         st = os.stat(f)
@@ -64,6 +64,33 @@ def test_populate_tree(static_dataset: FrameSet) -> None:
             f"{freq} doesn't match {len(static_dataset.rows(str(freq)))}"
             f" vs {num_rows}"
         )
+
+
+def test_populate_tree_restrict_sessions(static_dataset: FrameSet) -> None:
+    dataset = deepcopy(static_dataset)
+    blueprint: TestXnatDatasetBlueprint = dataset.__annotations__["blueprint"]
+    session_ids = [i[1] for i in blueprint.all_ids]
+    dataset.include = {"session": session_ids[1::2]}  # Include every second session
+    num_sessions = reduce(op.mul, blueprint.dim_lengths, 1) // 2
+    with dataset.tree:
+        assert len(dataset.tree.root.children[MedImage.session]) == num_sessions
+
+
+def test_populate_tree_restrict_subjects(static_dataset: FrameSet) -> None:
+    dataset = deepcopy(static_dataset)
+    blueprint: TestXnatDatasetBlueprint = dataset.__annotations__["blueprint"]
+    subject_ids = sorted(set(i[0] for i in blueprint.all_ids))
+    restricted_subject_ids = subject_ids[::2]
+    dataset.include = {
+        "subject": restricted_subject_ids
+    }  # Include every second session
+    num_sessions = int(
+        reduce(op.mul, blueprint.dim_lengths, 1)
+        * len(restricted_subject_ids)
+        / len(subject_ids)
+    )
+    with dataset.tree:
+        assert len(dataset.tree.root.children[MedImage.session]) == num_sessions
 
 
 def test_populate_row(static_dataset: FrameSet) -> None:
@@ -220,7 +247,7 @@ def test_session_datetime_sorting(
                 resources=[
                     FileBP(
                         path="Text",
-                        datatype=Text,
+                        datatype=TextFile,
                         filenames=["file.txt"],  # resource name  # Data datatype
                     )
                 ],

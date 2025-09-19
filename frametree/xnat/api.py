@@ -1,37 +1,30 @@
-import os.path as op
-from pathlib import Path
-import typing as ty
-import tempfile
-import logging
 import hashlib
-from datetime import time, date
+import itertools
 import json
+import logging
+import os.path as op
 import re
+import tempfile
+import typing as ty
+from datetime import date, time
 from operator import attrgetter
-from zipfile import ZipFile, BadZipfile
-import attrs
-import xnat.session
-from fileformats.core import FileSet, Field
-from fileformats.medimage import DicomSeries
-from fileformats.core.exceptions import FormatRecognitionError
-from frametree.core.utils import (
-    path2label,
-    label2path,
-)
-from frametree.core.store.remote import (
-    RemoteStore,
-)
-from frametree.core.row import DataRow
-from frametree.core.exceptions import (
-    FrameTreeError,
-    FrameTreeUsageError,
-)
-from frametree.core.serialize import asdict
-from frametree.core.axes import Axes
-from frametree.core.tree import DataTree
-from frametree.core.entry import DataEntry
-from frametree.axes.medimage import MedImage
+from pathlib import Path
+from zipfile import BadZipfile, ZipFile
 
+import attrs
+import xnat.mixin
+from fileformats.core import Field, FileSet
+from fileformats.core.exceptions import FormatRecognitionError
+from fileformats.medimage import DicomSeries
+from frametree.axes.medimage import MedImage
+from frametree.core.axes import Axes
+from frametree.core.entry import DataEntry
+from frametree.core.exceptions import FrameTreeError, FrameTreeUsageError
+from frametree.core.row import DataRow
+from frametree.core.serialize import asdict
+from frametree.core.store.remote import RemoteStore
+from frametree.core.tree import DataTree
+from frametree.core.utils import label2path, path2label
 
 logger = logging.getLogger("frametree")
 
@@ -88,37 +81,49 @@ class Xnat(RemoteStore):
         tree : DataTree
             The tree to populate with nodes via the ``DataTree.add_leaf`` method
         """
+
+        def xsession_sort_key(
+            xsess: "xnat.mixin.ExperimentData",
+        ) -> ty.Tuple[str, str, str, str]:
+            """Used to sort XNAT sessions by subject-label, date, time, label"""
+            return (
+                xsess.parent.label if xsess.parent.label else "",
+                xsess.date if xsess.date else DEFAULT_DATE,
+                xsess.time if xsess.time else DEFAULT_TIME,
+                xsess.label if xsess.label else "",
+            )
+
         with self.connection:
             # Get all "leaf" nodes, i.e. XNAT imaging session objects
             xproject = self.connection.projects[tree.dataset_id]
-            # if MedImage.subject in self.load_only:
-            #     xsubjects = [
-            #         xproject.subjects[s] for s in self.load_only[MedImage.subject]
-            #     ]
-            # else:
-            xsubjects = xproject.subjects.values()
-            xsubjects = sorted(xsubjects, key=attrgetter("label"))
-            for xsubject in xsubjects:
-                # Sort sessions into a logical order
-                xsessions = sorted(
-                    xsubject.experiments.values(),
-                    key=lambda x: (
-                        x.date if x.date else DEFAULT_DATE,
-                        x.time if x.time else DEFAULT_TIME,
-                        x.label if x.label else "",
-                    ),
+            # For performance reasons, we only iterate over the sessions that are to be
+            # included in the frameset, if any have been specified
+            if "session" in tree.frameset.include:
+                xsessions = (
+                    xproject.experiments[i] for i in tree.frameset.include["session"]
                 )
-                for xsess in xsessions:
-                    date = xsess.date.strftime("%Y%m%d") if xsess.date else None
-                    metadata = {
-                        "session": {
-                            "date": date,
-                            "visit_id": xsess.visit_id,
-                            "age": xsess.age,
-                            "modality": xsess.modality,
-                        }
+            elif "subject" in tree.frameset.include:
+                xsessions = itertools.chain(
+                    *(
+                        xproject.subjects[i].experiments
+                        for i in tree.frameset.include["subject"]
+                    )
+                )
+            else:
+                xsessions = iter(xproject.experiments)
+            sorted_xsessions = sorted(xsessions, key=xsession_sort_key)
+            for xsess in sorted_xsessions:
+                xsubject: xnat.mixin.SubjectData = xsess.parent
+                date = xsess.date.strftime("%Y%m%d") if xsess.date else None
+                metadata = {
+                    "session": {
+                        "date": date,
+                        "visit_id": xsess.visit_id,
+                        "age": xsess.age,
+                        "modality": xsess.modality,
                     }
-                    tree.add_leaf([xsubject.label, xsess.label], metadata=metadata)
+                }
+                tree.add_leaf([xsubject.label, xsess.label], metadata=metadata)
 
     def populate_row(self, row: DataRow) -> None:
         """
