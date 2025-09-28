@@ -317,3 +317,43 @@ def test_duplicate_entry_access(
     assert PlainText(row.entry("a_scan/Text", key="2").item).contents == "2.txt"
     with pytest.raises(ValueError):
         row.entry("a_scan", order=0, key="0")
+
+
+def test_single_load(
+    xnat_repository: Xnat,
+    run_prefix: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+
+    blueprint = TestXnatDatasetBlueprint(  # type:  ignore[call-arg]
+        dim_lengths=[1, 1, 2],
+        scans=[
+            ScanBP(
+                name="a_scan",  # scan type (ID is index)
+                resources=[
+                    FileBP(
+                        path="Text",
+                        datatype=PlainText,
+                        filenames=["1.txt"],  # resource name  # Data datatype
+                    )
+                ],
+                id="1",
+            ),
+        ],
+    )
+
+    project_id = run_prefix + "singleload"
+    frameset = blueprint.make_dataset(xnat_repository, project_id)
+
+    assert len(list(frameset.rows("session"))) == 2
+
+    logging.getLogger("frametree").setLevel(logging.DEBUG)
+
+    frameset = xnat_repository.load_frameset(
+        id=project_id,
+        name="",
+        include={"session": ["visit0group0member0"]},
+    )
+
+    assert len(list(frameset.rows("session"))) == 1
+    assert caplog.text.count("Adding leaf to data tree at path") == 1
