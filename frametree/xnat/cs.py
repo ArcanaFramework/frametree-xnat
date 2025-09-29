@@ -3,20 +3,22 @@ Helper functions for generating XNAT Container Service compatible Docker
 containers
 """
 
-import os
-import typing as ty
-import re
 import logging
+import os
+import re
+import typing as ty
 from pathlib import Path
+
 import attrs
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
-from frametree.core.utils import path2label
 from frametree.axes.medimage import MedImage
 from frametree.core.axes import Axes
-from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
 from frametree.core.exceptions import FrameTreeNoDirectXnatMountException
+from frametree.core.row import DataRow
+from frametree.core.utils import path2label
+
 from .api import Xnat
 
 logger = logging.getLogger("frametree")
@@ -164,6 +166,14 @@ class XnatViaCS(Xnat):
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         if not (self.internal_upload and entry.is_derivative):
+            logger.debug(
+                "Using API to put fileset %s into %s because it either internal_upload (%s)"
+                " and entry.is_derivative (%s) are False",
+                fileset,
+                entry,
+                self.internal_upload,
+                entry.is_derivative,
+            )
             return super().put_fileset(fileset, entry)  # type: ignore[no-any-return]
         cached = fileset.copy(
             dest_dir=self.output_mount,
