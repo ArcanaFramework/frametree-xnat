@@ -108,10 +108,11 @@ class XnatViaCS(Xnat):
             # Fallback to API access
             return super().get_fileset(entry, datatype)  # type: ignore[no-any-return]
         logger.info(
-            "Getting %s from %s:%s row via direct access to archive directory",
+            "Getting %s from %s:%s row via direct access to archive directory from %s",
             entry.path,
             entry.row.frequency,
             entry.row.id,
+            entry.uri,
         )
         if entry.is_derivative and self.internal_upload:
             # entry is in input mount
