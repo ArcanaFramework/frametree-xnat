@@ -99,7 +99,7 @@ class XnatViaCS(Xnat):
     def password_default(self) -> str:
         return os.environ["XNAT_PASS"]
 
-    def get_fileset(self, entry: DataEntry, datatype: ty.Type[FileSet]) -> FileSet:
+    def get_fileset(self, entry: DataEntry, datatype: ty.Type[FileSet]) -> list[Path]:
         """Attempt to get fileset directly from the input mount, falling back to API
         access if that fails"""
         try:
@@ -160,7 +160,7 @@ class XnatViaCS(Xnat):
                 f"None of {fspaths} in {entry} matched any of {ty.get_args(datatype)}: "
                 + "\n\n".join(reasons)
             )
-        return datatype(fspaths)
+        return fspaths
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         if not (self.internal_upload and entry.is_derivative):
