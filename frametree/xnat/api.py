@@ -12,8 +12,7 @@ from pathlib import Path
 from zipfile import BadZipfile, ZipFile
 
 import attrs
-import xnat.mixin
-from fileformats.core import Field, FileSet
+from fileformats.core import Field, FileSet, to_mime
 from fileformats.core.exceptions import FormatRecognitionError
 from fileformats.medimage import DicomSeries
 from frametree.axes.medimage import MedImage
@@ -25,6 +24,8 @@ from frametree.core.serialize import asdict
 from frametree.core.store.remote import RemoteStore
 from frametree.core.tree import DataTree
 from frametree.core.utils import label2path, path2label
+
+import xnat.mixin
 
 logger = logging.getLogger("frametree")
 
@@ -133,7 +134,7 @@ class Xnat(RemoteStore):
         Parameters
         ----------
         row : DataRow
-            The row to populate with entries using the ``DataRow.add_entry`` method
+            The row to populate with entries using the ``DataRow.found_entry`` method
         """
         with self.connection:
             xrow = self.get_xrow(row)
@@ -152,7 +153,7 @@ class Xnat(RemoteStore):
                         else:
                             datatype = FileSet
                             item_metadata = {}
-                        row.add_entry(
+                        row.found_entry(
                             path=f"{xscan.type}/{xresource.label}",
                             datatype=datatype,
                             order_key=xscan.id,
@@ -161,7 +162,7 @@ class Xnat(RemoteStore):
                             uri=uri,
                         )
             for field_id in xrow.fields:
-                row.add_entry(path=label2path(field_id), datatype=Field, uri=None)
+                row.found_entry(path=label2path(field_id), datatype=Field, uri=None)
             for xresource in xrow.resources.values():
                 if xresource.label == self.METADATA_RESOURCE:
                     continue
@@ -170,7 +171,7 @@ class Xnat(RemoteStore):
                     datatype = FileSet.from_mime(xresource.format)
                 except FormatRecognitionError:
                     datatype = FileSet
-                row.add_entry(
+                row.found_entry(
                     path=label2path(xresource.label),
                     datatype=datatype,
                     uri=uri,
@@ -508,7 +509,7 @@ class Xnat(RemoteStore):
                 xformat = None
             else:
                 parent = xrow
-                xformat = datatype.mime_like
+                xformat = to_mime(datatype, official=False)
                 resource_label = path2label(path)
             xresource = self.connection.classes.ResourceCatalog(
                 parent=parent,
@@ -517,7 +518,7 @@ class Xnat(RemoteStore):
             )
             logger.debug("Created resource %s", xresource)
             # Add corresponding entry to row
-            entry = row.add_entry(
+            entry = row.found_entry(
                 path=path,
                 datatype=datatype,
                 uri=self._get_resource_uri(xresource),
@@ -543,7 +544,7 @@ class Xnat(RemoteStore):
         row : DataRow
             the row of the data entry
         """
-        return row.add_entry(path, datatype, uri=None)
+        return row.found_entry(path, datatype, uri=None)
 
     def get_checksums(self, uri: str) -> ty.Optional[ty.Dict[str, str]]:
         """

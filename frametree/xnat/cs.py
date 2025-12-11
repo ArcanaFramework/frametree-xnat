@@ -194,7 +194,7 @@ class XnatViaCS(Xnat):
         self, fileset: FileSet, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
         uri = self._make_uri(row) + "/RESOURCES/" + path
-        entry = row.add_entry(path=path, datatype=datatype, uri=uri)
+        entry = row.found_entry(path=path, datatype=datatype, uri=uri)
         self.put_fileset(fileset, entry)
         return entry
 
