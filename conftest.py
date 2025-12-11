@@ -1,41 +1,42 @@
 # flake8: noqa: E501
-import os
-import logging
-import sys
-import typing as ty
-from tempfile import mkdtemp
-from unittest.mock import patch
 import json
+import logging
+import os
+import random
+import sys
 import tempfile
+import typing as ty
 from datetime import datetime
 from pathlib import Path
+from tempfile import mkdtemp
+from unittest.mock import patch
 from warnings import warn
+
+import docker
+import medimages4tests.dummy.dicom.mri.fmap.siemens.skyra.syngo_d13c
+import medimages4tests.dummy.nifti
+import nibabel
+import numpy
 import pytest
 import requests
-import numpy
-import docker
-import random
-import nibabel
-from click.testing import CliRunner, Result as CliResult
-from imageio.core.fetching import get_remote_file
 import xnat4tests
-import medimages4tests.dummy.nifti
-import medimages4tests.dummy.dicom.mri.fmap.siemens.skyra.syngo_d13c
-from pydra2app.core.image.base import BaseImage
+from click.testing import CliRunner
+from click.testing import Result as CliResult
+from fileformats.application import Json, Yaml
+from fileformats.generic import Directory
+from fileformats.image import Png
+from fileformats.medimage import DicomSeries, NiftiGz, NiftiGzX, NiftiX
+from fileformats.text import Plain as Text
 from frametree.axes.medimage import MedImage
 from frametree.core.frameset import FrameSet
-from fileformats.medimage import NiftiGzX, NiftiGz, DicomSeries, NiftiX
-from fileformats.text import Plain as Text
-from fileformats.image import Png
-from fileformats.application import Json
-from fileformats.generic import Directory
-from frametree.xnat.api import Xnat
-from frametree.xnat.testing import (
-    TestXnatDatasetBlueprint,
-    ScanBlueprint as ScanBP,
-)
 from frametree.testing.blueprint import FileSetEntryBlueprint as FileBP
+from imageio.core.fetching import get_remote_file
+from pydra2app.core.image.base import BaseImage
+
+from frametree.xnat.api import Xnat
 from frametree.xnat.cs import XnatViaCS
+from frametree.xnat.testing import ScanBlueprint as ScanBP
+from frametree.xnat.testing import TestXnatDatasetBlueprint
 
 try:
     from pydra import set_input_validator
@@ -287,6 +288,22 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
             ),
         ],
     ),
+    "union_datatypes": TestXnatDatasetBlueprint(
+        dim_lengths=[1, 1, 3],
+        scans=[
+            ScanBP(
+                name="scan1",
+                resources=[FileBP(path="Text", datatype=Text | Json)],
+            ),
+        ],
+        derivatives=[
+            FileBP(
+                path="concatenated_file",
+                row_frequency=MedImage.session,
+                datatype=Text | Yaml,
+            )
+        ],
+    ),
     "concatenate_test": TestXnatDatasetBlueprint(
         dim_lengths=[1, 1, 2],
         scans=[
@@ -310,12 +327,22 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
     ),
 }
 
-GOOD_DATASETS = ["basic.api", "multi.api", "basic.cs", "multi.cs"]
+GOOD_DATASETS = [
+    "basic.api",
+    "multi.api",
+    "basic.cs",
+    "multi.cs",
+    "union_datatypes.api",
+    "union_datatypes.cs",
+    "concatenate_test.api",
+]
 MUTABLE_DATASETS = [
     "basic.api",
     "multi.api",
     "basic.cs",
     "multi.cs",
+    "union_datatypes.api",
+    "union_datatypes.cs",
     "basic.cs_internal",
     "multi.cs_internal",
 ]
