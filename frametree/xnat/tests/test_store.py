@@ -124,9 +124,8 @@ def test_get(static_dataset: FrameSet, caplog: Any) -> None:
                 )
     with caplog.at_level(logging.INFO, logger="frametree"):
         for row in static_dataset.rows(str(MedImage.session)):
-            if expected_files is None:
-                continue
             for source_name, files in expected_files.items():
+
                 try:
                     item = row[source_name]
                 except PermissionError:
@@ -147,7 +146,8 @@ def test_get(static_dataset: FrameSet, caplog: Any) -> None:
                 item_files = sorted(
                     p.name for p in item.fspaths if not p.name.endswith("catalog.xml")  # type: ignore[attr-defined]
                 )
-                assert item_files == sorted(Path(f).name for f in files)
+                if files is not None:
+                    assert item_files == sorted(Path(f).name for f in files)
     method_str = "direct" if type(static_dataset.store) is XnatViaCS else "api"
     assert f"{method_str} access" in caplog.text.lower()
 
