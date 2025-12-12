@@ -117,10 +117,15 @@ def test_get(static_dataset: FrameSet, caplog: Any) -> None:
                 static_dataset.add_source(
                     source_name, path=scan_bp.name, datatype=resource_bp.datatype
                 )
-                expected_files[source_name] = set(resource_bp.filenames)
+                expected_files[source_name] = (
+                    set(resource_bp.filenames)
+                    if resource_bp.filenames is not None
+                    else None
+                )
     with caplog.at_level(logging.INFO, logger="frametree"):
         for row in static_dataset.rows(str(MedImage.session)):
             for source_name, files in expected_files.items():
+
                 try:
                     item = row[source_name]
                 except PermissionError:
@@ -141,7 +146,8 @@ def test_get(static_dataset: FrameSet, caplog: Any) -> None:
                 item_files = sorted(
                     p.name for p in item.fspaths if not p.name.endswith("catalog.xml")  # type: ignore[attr-defined]
                 )
-                assert item_files == sorted(Path(f).name for f in files)
+                if files is not None:
+                    assert item_files == sorted(Path(f).name for f in files)
     method_str = "direct" if type(static_dataset.store) is XnatViaCS else "api"
     assert f"{method_str} access" in caplog.text.lower()
 
@@ -159,6 +165,7 @@ def test_post(dataset: FrameSet, source_data: Path, caplog: Any) -> None:
         # Create test files, calculate checksums and recorded expected paths
         # for inserted files
         item = deriv_bp.make_item(
+            index=0,
             source_data=source_data,
             source_fallback=True,
         )

@@ -1,13 +1,13 @@
-import typing as ty
-from pathlib import Path
 import logging
 import tempfile
+import typing as ty
+from pathlib import Path
+
 import attrs
 from frametree.axes.medimage import MedImage
 from frametree.core.axes import Axes
 from frametree.core.row import DataRow
-from frametree.testing.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
-
+from frametree.testing.blueprint import FileSetEntryBlueprint, TestDatasetBlueprint
 
 logger = logging.getLogger("frametree")
 
@@ -32,7 +32,9 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):  # type: ignore[misc]
     hierarchy: ty.List[Axes] = ["subject", "session"]
     filesets: ty.Optional[ty.List[str]] = None
 
-    def make_entries(self, row: DataRow, source_data: ty.Optional[Path] = None) -> None:
+    def make_entries(
+        self, row: DataRow, index: int, source_data: ty.Optional[Path] = None
+    ) -> None:
         logger.debug("Making entries in %s row: %s", row, self.scans)
         xrow = row.frameset.store.get_xrow(row)
         xclasses = xrow.xnat_session.classes
@@ -45,6 +47,7 @@ class TestXnatDatasetBlueprint(TestDatasetBlueprint):  # type: ignore[misc]
                 xresource = xscan.create_resource(resource_bp.path)
                 # Create the dummy files
                 item = resource_bp.make_item(
+                    index=index,
                     source_data=source_data,
                     source_fallback=True,
                     escape_source_name=False,
