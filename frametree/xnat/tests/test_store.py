@@ -9,6 +9,7 @@ from copy import deepcopy
 from datetime import datetime
 from functools import reduce
 from pathlib import Path
+from tempfile import mkdtemp
 from typing import Any
 
 import pytest
@@ -364,3 +365,55 @@ def test_single_load(
 
     assert len(list(frameset.rows("session"))) == 1
     assert caplog.text.count("Adding leaf to data tree at path") == 1
+
+
+def test_get_fileset_falls_back_to_api_when_resource_missing(
+    xnat_repository: Xnat,
+    source_data: Path,
+    run_prefix: str,
+    tmp_path: Path,
+    caplog: Any,
+) -> None:
+    blueprint = TestXnatDatasetBlueprint(
+        dim_lengths=[1, 1, 1],
+        scans=[
+            ScanBP(
+                name="scan1",
+                resources=[
+                    FileBP(path="Text", datatype=PlainText, filenames=["file.txt"]),
+                ],
+            ),
+        ],
+    )
+    project_id = run_prefix + "csfallback" + str(hex(random.getrandbits(16)))[2:]
+    blueprint.make_dataset(
+        dataset_id=project_id,
+        store=xnat_repository,
+        source_data=source_data,
+        name="",
+    )
+
+    # Create a partial input mount, scan dir exists but resource is missing
+    partial_mount = tmp_path / "input"
+    partial_mount.mkdir()
+    (partial_mount / "SCANS" / "1").mkdir(parents=True)
+
+    cs_store = XnatViaCS(
+        server=xnat_repository.server,
+        user=xnat_repository.user,
+        password=xnat_repository.password,
+        cache_dir=Path(mkdtemp()),
+        row_frequency=MedImage.session,
+        input_mount=partial_mount,
+        output_mount=tmp_path / "output",
+    )
+    dataset = cs_store.load_frameset(project_id, name="")
+
+    with caplog.at_level(logging.INFO, logger="frametree"):
+        for row in dataset.rows("session"):
+            for entry in row.entries:
+                item = entry.item
+                # Verify we got a valid file back via API fallback
+                assert list(item.fspaths)
+
+    assert "falling back to API access" in caplog.text

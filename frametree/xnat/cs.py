@@ -139,9 +139,13 @@ class XnatViaCS(Xnat):
             resource_path = input_mount / path
             if not resource_path.exists():
                 resource_path = input_mount / path.replace("resources", "RESOURCES")
-            assert (
-                resource_path.exists()
-            ), f"Resource path {path} not found in {input_mount}: {list(input_mount.iterdir())}"  # noqa
+            if not resource_path.exists():
+                logger.info(
+                    "Resource path %s not found in %s, falling back to API access",
+                    path,
+                    input_mount,
+                )
+                return super().get_fileset(entry, datatype)
             fspaths = [
                 p
                 for p in resource_path.iterdir()

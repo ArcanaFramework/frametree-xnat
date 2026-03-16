@@ -47,6 +47,7 @@ doc = [
 test = [
     "frametree-bids",
     "medimages4tests >=0.3",
+    "openneuro-py <2025",
     "pydra2app",
     "pytest >=5.4.3",
     "pytest-cov >=2.12.1",
@@ -95,3 +96,6 @@ strict = true
 namespace_packages = true
 explicit_package_bases = true
 exclude = ["tests", "scripts", "docs", "build", "dist"]
+
+[tool.uv]
+prerelease = "allow"
