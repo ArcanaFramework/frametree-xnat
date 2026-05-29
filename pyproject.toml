@@ -12,7 +12,7 @@ dependencies = [
     "fileformats >=0.15.0",
     "fileformats-medimage >=0.10.1",
     "fileformats-medimage-extras >=0.10.1",
-    "xnat",
+    "xnat==0.7.2",
 ]
 license = { file = "LICENSE" }
 authors = [{ name = "Thomas G. Close", email = "tom.g.close@gmail.com" }]
