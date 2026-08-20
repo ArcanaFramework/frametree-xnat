@@ -617,7 +617,7 @@ class Xnat(RemoteStore):
         """
         with self.connection:
             xproject = self.connection.projects[row.frameset.id]
-            if row.frequency == MedImage.constant:
+            if row.frequency == MedImage.dataset:
                 xrow = xproject
             elif row.frequency == MedImage.subject:
                 xrow = xproject.subjects[row.frequency_id("subject")]
