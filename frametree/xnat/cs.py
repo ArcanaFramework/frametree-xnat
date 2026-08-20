@@ -214,8 +214,7 @@ class XnatViaCS(Xnat):
         if self.row_frequency == row.frequency:
             return self.input_mount
         elif (
-            self.row_frequency == MedImage.constant
-            and row.frequency == MedImage.session
+            self.row_frequency == MedImage.dataset and row.frequency == MedImage.session
         ):
             arc_dirs = [
                 d
@@ -238,7 +237,7 @@ class XnatViaCS(Xnat):
             uri += "/experiments/" + row.id
         elif row.frequency == MedImage.subject:
             uri += "/subjects/" + row.id
-        elif row.frequency != MedImage.constant:
+        elif row.frequency != MedImage.dataset:
             uri += "/subjects/" + self.make_row_name(row)
         return uri
 

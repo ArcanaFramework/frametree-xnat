@@ -5,7 +5,8 @@
 [![Latest Version](https://img.shields.io/pypi/v/frametree-xnat.svg)](https://pypi.python.org/pypi/frametree-xnat/)
 [![docs](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://arcanaframework.github.io/frametree)
 
-An extension for the [FrameTree](http://arcanaframework.github.io/framtree) framework that support defining data frames in [XNAT](https://xnat.org) projects
+An extension for the [FrameTree](http://arcanaframework.github.io/framtree) framework that support defining data frames in [XNAT](https://xnat.org) projects. Frametree-xnat uses [XnatPy](https://xnat.readthedocs.io/en/stable/) under the hood to list/download/upload data stored in XNAT
+instances.
 
 ## Quick Installation
 
