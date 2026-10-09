@@ -12,12 +12,14 @@ from pathlib import Path
 import attrs
 from fileformats.core import FileSet
 from fileformats.core.exceptions import FormatMismatchError
+from fileformats.generic import Directory
 from frametree.axes.medimage import MedImage
 from frametree.core.axes import Axes
 from frametree.core.entry import DataEntry
 from frametree.core.exceptions import FrameTreeNoDirectXnatMountException
 from frametree.core.row import DataRow
 from frametree.core.utils import path2label
+from pydra.utils.typing import is_union
 
 from .api import Xnat
 
@@ -151,13 +153,17 @@ class XnatViaCS(Xnat):
                 for p in resource_path.iterdir()
                 if not p.name.endswith("_catalog.xml")
             ]
+            if fspaths:
+                fspaths = self._directory_fspaths(resource_path, fspaths, datatype)
         if not fspaths:
             raise ValueError(f"No valid file paths found for {entry}")
         # We use from_paths instead of just datatype(fspaths) to handle unions
-        if ty.get_origin(datatype) is ty.Union:
+        if is_union(datatype):
             reasons = []
             candidate: ty.Type[FileSet]
             for candidate in ty.get_args(datatype):
+                if candidate is None or candidate is type(None):
+                    continue  # the None member of an optional datatype
                 try:
                     return candidate(fspaths)
                 except FormatMismatchError as e:
@@ -201,6 +207,39 @@ class XnatViaCS(Xnat):
         entry = row.found_entry(path=path, datatype=datatype, uri=uri)
         self.put_fileset(fileset, entry)
         return entry
+
+    @classmethod
+    def _directory_fspaths(
+        cls, resource_path: Path, fspaths: ty.List[Path], datatype: ty.Any
+    ) -> ty.List[Path]:
+        """The contents of a resource are passed to the datatype, which works for most
+        datatypes and for directories stored by frametree sinks (which are nested within
+        the resource). However, a resource can also hold the contents of a directory at
+        its root (e.g. if it was uploaded with `upload_dir(<dir>)`), in which case the
+        contents won't match a directory datatype but the resource directory will"""
+        candidates = ty.get_args(datatype) if is_union(datatype) else (datatype,)
+        dir_types = [
+            c for c in candidates if isinstance(c, type) and issubclass(c, Directory)
+        ]
+        if not dir_types:
+            return fspaths
+        for candidate in candidates:
+            if candidate is None or candidate is type(None):
+                continue
+            try:
+                candidate(fspaths)
+            except FormatMismatchError:
+                pass
+            else:
+                return fspaths  # the contents match, so don't change anything
+        for dir_type in dir_types:
+            try:
+                dir_type([resource_path])
+            except FormatMismatchError:
+                pass
+            else:
+                return [resource_path]
+        return fspaths
 
     def output_mount_fspath(self, entry: DataEntry) -> Path:
         """Determine the paths that derivatives will be saved at"""
