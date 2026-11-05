@@ -560,10 +560,10 @@ if [[ "$output" != *"{SUCCESS_STR}"* ]]; then
     echo $output
     exit 1;
 fi
-# Write mock output files to 'derivatives' Directory
-mkdir -p $OUTPUTS_DIR
-echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
-echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
+# Write mock output files to the subject directory within the 'derivatives' Directory
+mkdir -p $OUTPUTS_DIR/sub-${{SUBJ_ID}}
+echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}/sub-${{SUBJ_ID}}_file1.txt
+echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}/sub-${{SUBJ_ID}}_file2.txt
 """
 
 
@@ -589,10 +589,10 @@ BIDS_DATASET=$1
 OUTPUTS_DIR=$2
 SUBJ_ID=$5
 {file_tests}
-# Write mock output files to 'derivatives' Directory
-mkdir -p $OUTPUTS_DIR
-echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
-echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
+# Write mock output files to the subject directory within the 'derivatives' Directory
+mkdir -p $OUTPUTS_DIR/sub-${{SUBJ_ID}}
+echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}/sub-${{SUBJ_ID}}_file1.txt
+echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}/sub-${{SUBJ_ID}}_file2.txt
 """
 
 
